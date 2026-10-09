@@ -239,7 +239,7 @@ def create_app(config_name=None):
                     name='Admin User',
                     role='admin',
                     org_id=org.id,
-                    is_verified=True
+                    is_active=True
                 )
                 user.set_password('password')
                 db.session.add(user)
