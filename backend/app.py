@@ -273,9 +273,9 @@ def create_app(config_name=None):
         return f"<h1>Internal Server Error</h1><pre>{error_msg}</pre><pre style='color:red;'>{error_trace}</pre>", 500
 
     # Create tables + safe column migrations on every deploy
-    with app.app_context():
-        db.create_all()
-        _safe_migrate(db)
+    # with app.app_context():
+    #     db.create_all()
+    #     _safe_migrate(db)
 
     return app
 
