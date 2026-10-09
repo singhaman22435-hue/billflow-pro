@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% block title %}E-Way Bill — {{ invoice.invoice_no }}{% endblock %}
+{% block page_title %}E-Way Bill{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">E-Way Bill</div>
+    <div class="page-subtitle">{{ invoice.invoice_no }} · {{ invoice.customer.name }} · ₹{{ format_currency(invoice.grand_total) }}</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('invoices.view', id=invoice.id) }}" class="btn btn-secondary">← Back to Invoice</a>
+    <a href="{{ url_for('einvoice.einvoice', id=invoice.id) }}" class="btn btn-outline">🧾 E-Invoice</a>
+  </div>
+</div>
+
+{% if invoice.ewb_no %}
+<div class="card" style="border:1px solid var(--success);background:rgba(16,185,129,0.05);margin-bottom:20px;">
+  <div class="card-body" style="display:flex;align-items:center;gap:16px;">
+    <span style="font-size:2rem;">✅</span>
+    <div>
+      <div style="font-size:1rem;font-weight:700;color:var(--success);">E-Way Bill Active</div>
+      <div style="font-family:monospace;font-size:1.1rem;color:var(--accent);font-weight:700;">{{ invoice.ewb_no }}</div>
+      <div class="text-muted" style="font-size:0.82rem;">E-Way Bill Number registered for this invoice</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid-2" style="gap:20px;">
+  <!-- Transport Details + JSON Download -->
+  <div class="card">
+    <div class="card-header"><div class="card-title">🚚 Transport Details</div></div>
+    <div class="card-body">
+      <form method="POST" id="ewbForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Transport Mode</label>
+            <select name="trans_mode" class="form-control">
+              <option value="1">🛣️ Road</option>
+              <option value="2">🚂 Rail</option>
+              <option value="3">✈️ Air</option>
+              <option value="4">🚢 Ship</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Distance (km)</label>
+            <input type="number" name="distance" class="form-control" placeholder="e.g. 250" min="1">
+          </div>
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Vehicle Number</label>
+            <input type="text" name="vehicle_no" class="form-control" placeholder="e.g. MH02AB1234" style="text-transform:uppercase;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vehicle Type</label>
+            <select name="vehicle_type" class="form-control">
+              <option value="R">Regular</option>
+              <option value="O">ODC (Over Dimensional Cargo)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Transporter Name</label>
+            <input type="text" name="transporter_name" class="form-control" placeholder="Transport company name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Transporter GSTIN</label>
+            <input type="text" name="transporter_gstin" class="form-control" placeholder="e.g. 27AAAAA0000A1Z5">
+          </div>
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">LR / RR Number</label>
+            <input type="text" name="lr_no" class="form-control" placeholder="Lorry Receipt number">
+          </div>
+          <div class="form-group">
+            <label class="form-label">LR Date</label>
+            <input type="date" name="lr_date" class="form-control">
+          </div>
+        </div>
+        <div class="d-flex gap-8 mt-8">
+          <button type="submit" formaction="{{ url_for('einvoice.ewaybill', id=invoice.id) }}" name="action" value="download_json" class="btn btn-primary flex-1">📥 Download E-Way Bill JSON</button>
+        </div>
+        <div style="margin-top:12px;text-align:center;">
+          <a href="https://ewaybillgst.gov.in" target="_blank" style="font-size:0.82rem;color:var(--accent);">🔗 Open E-Way Bill Portal →</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Save EWB Number + Info -->
+  <div class="card">
+    <div class="card-header"><div class="card-title">📝 Save E-Way Bill Number</div></div>
+    <div class="card-body">
+      <p class="text-muted" style="font-size:0.9rem;margin-bottom:16px;">After generating EWB on the portal, enter the 12-digit number here:</p>
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="save_ewb">
+        <div class="form-group">
+          <label class="form-label">E-Way Bill Number</label>
+          <input type="text" name="ewb_no" class="form-control" value="{{ invoice.ewb_no or '' }}" 
+                 placeholder="12-digit EWB Number" style="font-size:1.1rem;font-family:monospace;letter-spacing:2px;" maxlength="12">
+          <div class="form-hint">12-digit number from ewaybillgst.gov.in</div>
+        </div>
+        <button type="submit" class="btn btn-success w-100">💾 Save EWB Number</button>
+      </form>
+
+      <div style="margin-top:24px;padding:16px;background:var(--bg-secondary);border-radius:10px;">
+        <div style="font-weight:700;font-size:0.85rem;margin-bottom:12px;color:var(--accent);">📋 E-Way Bill Details</div>
+        <div class="total-row"><span class="total-label">Invoice No</span><span>{{ invoice.invoice_no }}</span></div>
+        <div class="total-row"><span class="total-label">From</span><span>{{ org.city }}, {{ org.state }}</span></div>
+        <div class="total-row"><span class="total-label">To</span><span>{{ invoice.customer.city or '—' }}, {{ invoice.customer.state or '—' }}</span></div>
+        <div class="total-row"><span class="total-label">Invoice Value</span><span class="amt fw-700">{{ format_currency(invoice.grand_total) }}</span></div>
+        <div class="total-row"><span class="total-label">Taxable Value</span><span class="amt">{{ format_currency(invoice.taxable_amount) }}</span></div>
+      </div>
+
+      <div class="card mt-16" style="border:1px solid rgba(99,102,241,0.3);margin-top:16px;">
+        <div class="card-body" style="padding:14px;">
+          <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px;">📌 When is E-Way Bill required?</div>
+          <div class="text-muted" style="font-size:0.82rem;line-height:1.7;">
+            • Goods movement value > <strong>₹50,000</strong><br>
+            • Interstate supply (across state borders)<br>
+            • Valid for <strong>200 km per day</strong> (extendable)<br>
+            • Generate before goods movement starts
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

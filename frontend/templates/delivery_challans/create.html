@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% block title %}New Delivery Challan{% endblock %}
+{% block page_title %}New Delivery Challan{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Create Delivery Challan</div>
+    <div class="page-subtitle">DC No: <strong>{{ next_no }}</strong></div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('delivery_challans.list') }}" class="btn btn-secondary">← Back</a>
+    <button type="button" class="btn btn-primary" onclick="submitDC()">💾 Save DC</button>
+  </div>
+</div>
+
+<form id="dcForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="grid-2" style="gap:20px;align-items:start;">
+    <div>
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">🚚 Challan Details</div></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Customer <span class="required">*</span></label>
+            <div class="autocomplete-wrapper">
+              <input type="text" id="customerSearch" class="form-control" placeholder="Search customer..." autocomplete="off">
+              <div class="autocomplete-dropdown" id="customerDropdown"></div>
+            </div>
+            <input type="hidden" id="customer_id">
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">DC Date</label>
+              <input type="date" id="dc_date" class="form-control" value="{{ today.isoformat() }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Challan Type</label>
+              <select id="dc_type" class="form-control">
+                <option value="delivery">Delivery</option>
+                <option value="job_work">Job Work</option>
+                <option value="returnable">Returnable</option>
+                <option value="sample">Sample</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Vehicle No</label>
+              <input type="text" id="vehicle_no" class="form-control" placeholder="MH 01 AB 1234">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Driver Name</label>
+              <input type="text" id="driver_name" class="form-control" placeholder="Driver name">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Delivery Address</label>
+            <textarea id="delivery_address" class="form-control" rows="2" placeholder="Full delivery address..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea id="notes" class="form-control" rows="2" placeholder="Any instructions..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Items to Deliver -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">📦 Items to Deliver</div></div>
+        <div class="line-items-table">
+          <table>
+            <thead>
+              <tr><th>#</th><th style="min-width:200px;">Item</th><th>HSN</th><th>Qty</th><th>Unit</th><th>Remarks</th><th></th></tr>
+            </thead>
+            <tbody id="dcItemsBody"></tbody>
+          </table>
+          <button type="button" class="add-line-btn" onclick="addDCItem()">+ Add Item</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="background:linear-gradient(135deg,rgba(99,102,241,0.05),transparent);border-color:rgba(99,102,241,0.2);">
+        <div class="card-body" style="text-align:center;padding:32px;">
+          <div style="font-size:3rem;margin-bottom:12px;">🚚</div>
+          <div style="font-weight:700;font-size:1rem;margin-bottom:8px;">Delivery Challan</div>
+          <div class="text-muted" style="font-size:0.85rem;line-height:1.6;">
+            Used for dispatching goods without tax invoice.<br>
+            No GST calculation — quantities only.
+          </div>
+        </div>
+      </div>
+      <div class="mt-16">
+        <button type="button" class="btn btn-primary" onclick="submitDC()" style="width:100%;justify-content:center;">
+          💾 Save Delivery Challan
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let dcRow = 0;
+function addDCItem() {
+  dcRow++;
+  const tbody = document.getElementById('dcItemsBody');
+  const tr = document.createElement('tr');
+  tr.id = `dcrow_${dcRow}`;
+  tr.innerHTML = `
+    <td style="color:var(--text-muted);font-size:0.8rem;">${dcRow}</td>
+    <td>
+      <input type="text" class="line-input dc-desc" placeholder="Item description" style="width:100%;">
+    </td>
+    <td><input type="text" class="line-input dc-hsn" placeholder="HSN" style="width:70px;"></td>
+    <td><input type="number" class="line-input dc-qty" value="1" min="0.001" step="any" style="width:70px;"></td>
+    <td>
+      <select class="line-input dc-unit" style="width:65px;">
+        ${['Nos','Kg','Ltr','Mtr','Box','Pcs','Set'].map(u => `<option>${u}</option>`).join('')}
+      </select>
+    </td>
+    <td><input type="text" class="line-input dc-rem" placeholder="Remarks" style="width:100%;"></td>
+    <td>
+      <button type="button" onclick="document.getElementById('dcrow_${dcRow}').remove()"
+              style="background:none;border:none;color:var(--danger);cursor:pointer;">✕</button>
+    </td>
+  `;
+  tbody.appendChild(tr);
+}
+
+// Customer autocomplete
+const custIn = document.getElementById('customerSearch');
+const custDrop = document.getElementById('customerDropdown');
+const custId = document.getElementById('customer_id');
+let timer;
+custIn.addEventListener('input', () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    const q = custIn.value.trim();
+    if (!q) { custDrop.style.display='none'; return; }
+    fetch(`/api/customers/search?q=${encodeURIComponent(q)}`)
+      .then(r=>r.json()).then(data=>{
+        custDrop.innerHTML='';
+        data.forEach(c=>{
+          const d=document.createElement('div');
+          d.className='autocomplete-item';
+          d.innerHTML=`<div>${c.name}</div>`;
+          d.onclick=()=>{ custIn.value=c.name; custId.value=c.id; custDrop.style.display='none'; };
+          custDrop.appendChild(d);
+        });
+        custDrop.style.display='block';
+      });
+  }, 300);
+});
+document.addEventListener('click',e=>{ if(!e.target.closest('.autocomplete-wrapper')) custDrop.style.display='none'; });
+
+function submitDC() {
+  if (!custId.value) { alert('Select a customer'); return; }
+  const rows = document.querySelectorAll('#dcItemsBody tr');
+  const items = [];
+  rows.forEach(r => {
+    const desc = r.querySelector('.dc-desc')?.value?.trim();
+    if (!desc) return;
+    items.push({
+      description: desc,
+      hsn_sac: r.querySelector('.dc-hsn')?.value || '',
+      qty: parseFloat(r.querySelector('.dc-qty')?.value) || 1,
+      unit: r.querySelector('.dc-unit')?.value || 'Nos',
+      remarks: r.querySelector('.dc-rem')?.value || ''
+    });
+  });
+  if (!items.length) { alert('Add at least one item'); return; }
+  const payload = {
+    customer_id: parseInt(custId.value),
+    dc_date: document.getElementById('dc_date').value,
+    dc_type: document.getElementById('dc_type').value,
+    vehicle_no: document.getElementById('vehicle_no').value,
+    driver_name: document.getElementById('driver_name').value,
+    delivery_address: document.getElementById('delivery_address').value,
+    notes: document.getElementById('notes').value,
+    items
+  };
+  fetch('/delivery-challans/create', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':document.querySelector('[name=csrf_token]').value},
+    body:JSON.stringify(payload)
+  }).then(r=>r.json()).then(d=>{
+    if(d.success) window.location.href='/delivery-challans/'+d.dc_id;
+    else alert('Error saving DC');
+  });
+}
+
+addDCItem();
+</script>
+{% endblock %}

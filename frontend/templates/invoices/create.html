@@ -1,0 +1,375 @@
+{% extends 'base.html' %}
+{% block title %}Create Invoice{% endblock %}
+{% block page_title %}New Invoice{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Create Invoice</div>
+    <div class="page-subtitle">Invoice No: <strong>{{ next_no }}</strong></div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('invoices.list') }}" class="btn btn-secondary">← Back</a>
+    <button type="button" class="btn btn-primary" id="saveBtn" onclick="submitInvoice('draft')">Save Draft</button>
+    <button type="button" class="btn btn-success" onclick="submitInvoice('sent')">Save & Send →</button>
+  </div>
+</div>
+
+<form id="invoiceForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="invoice-builder">
+    <!-- LEFT: Main Form -->
+    <div>
+      <!-- Customer & Dates -->
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">📋 Invoice Details</div></div>
+        <div class="card-body">
+          <div class="form-row col-2">
+            <div class="form-group">
+              <div class="d-flex justify-between align-center mb-8">
+                <label class="form-label" style="margin-bottom:0;">Customer <span class="required">*</span></label>
+                <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('quickAddCustomerModal').classList.add('active')" style="padding:2px 8px;font-size:0.75rem;">+ Quick Add</button>
+              </div>
+              <div class="autocomplete-wrapper">
+                <input type="text" id="customerSearch" class="form-control" placeholder="Search customer..." autocomplete="off">
+                <div class="autocomplete-dropdown" id="customerDropdown"></div>
+              </div>
+              <input type="hidden" id="customer_id" name="customer_id">
+              <div id="customerInfo" class="form-help mt-8" style="display:none;"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Invoice Type</label>
+              <select name="invoice_type" id="invoice_type" class="form-control">
+                <option value="tax_invoice">Tax Invoice</option>
+                <option value="proforma">Proforma Invoice</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row col-3">
+            <div class="form-group">
+              <label class="form-label">Invoice Date <span class="required">*</span></label>
+              <input type="date" id="invoice_date" name="invoice_date" class="form-control" value="{{ today.isoformat() }}" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Due Date</label>
+              <input type="date" id="due_date" name="due_date" class="form-control">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Place of Supply</label>
+              <select id="place_of_supply" name="place_of_supply" class="form-control">
+                <option value="">Select State</option>
+                {% for code, state in INDIAN_STATES %}
+                <option value="{{ code }}-{{ state }}">{{ code }} - {{ state }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="is_igst" name="is_igst" style="accent-color:var(--accent);width:16px;height:16px;">
+              <span class="form-label" style="margin:0;">Inter-state supply (Apply IGST instead of CGST+SGST)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Line Items -->
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">📦 Line Items</div></div>
+        <div class="line-items-table">
+          <table id="lineItemsTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th style="min-width:200px;">Item / Description</th>
+                <th>HSN/SAC</th>
+                <th>Qty</th>
+                <th>Unit</th>
+                <th>Rate (₹)</th>
+                <th>Disc%</th>
+                <th>GST%</th>
+                <th>Amount (₹)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="lineItemsBody">
+              <!-- Rows added by JS -->
+            </tbody>
+          </table>
+          <button type="button" class="add-line-btn" onclick="addLineItem()">
+            + Add Item / Row
+          </button>
+        </div>
+      </div>
+
+      <!-- Notes & Terms -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">📝 Notes & Terms</div></div>
+        <div class="card-body">
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Notes (visible to customer)</label>
+              <textarea name="notes" id="notes" class="form-control" rows="3" placeholder="Payment instructions, thank you note...">{{ org.default_notes or '' }}</textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Terms & Conditions</label>
+              <textarea name="terms" id="terms" class="form-control" rows="3" placeholder="Terms of service...">{{ org.default_terms or '' }}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Totals -->
+    <div class="invoice-totals-box">
+      <div style="font-weight:700;font-size:0.95rem;margin-bottom:16px;color:var(--text-primary);">💳 Invoice Summary</div>
+
+      <div class="total-row">
+        <span class="total-label">Subtotal</span>
+        <span class="total-value amt" id="t_subtotal">₹0.00</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Total Discount</span>
+        <span class="total-value amt" id="t_discount" style="color:var(--success);">-₹0.00</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Taxable Amount</span>
+        <span class="total-value amt" id="t_taxable">₹0.00</span>
+      </div>
+      <div class="total-row" id="row_cgst">
+        <span class="total-label">CGST</span>
+        <span class="total-value amt" id="t_cgst">₹0.00</span>
+      </div>
+      <div class="total-row" id="row_sgst">
+        <span class="total-label">SGST</span>
+        <span class="total-value amt" id="t_sgst">₹0.00</span>
+      </div>
+      <div class="total-row" id="row_igst" style="display:none;">
+        <span class="total-label">IGST</span>
+        <span class="total-value amt" id="t_igst">₹0.00</span>
+      </div>
+      <div class="total-row grand">
+        <span>Grand Total</span>
+        <span class="amt" id="t_grand">₹0.00</span>
+      </div>
+
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;">Amount in Words</div>
+        <div style="font-size:0.82rem;color:var(--text-secondary);font-style:italic;" id="t_words">—</div>
+      </div>
+
+      <div style="margin-top:20px;display:flex;flex-direction:column;gap:8px;">
+        <button type="button" class="btn btn-primary" onclick="submitInvoice('draft')">💾 Save Draft</button>
+        <button type="button" class="btn btn-success" onclick="submitInvoice('sent')">✅ Save & Mark Sent</button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/invoice_builder.js') }}"></script>
+<script>
+// Pre-load items for autocomplete
+const ITEMS_DATA = {{ items | tojson }};
+const items_lookup = {};
+ITEMS_DATA.forEach(i => items_lookup[i.id] = i);
+
+// Customer search
+const customerInput = document.getElementById('customerSearch');
+const customerDropdown = document.getElementById('customerDropdown');
+const customerIdField = document.getElementById('customer_id');
+
+let searchTimer;
+customerInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    const q = customerInput.value.trim();
+    if (q.length < 1) { customerDropdown.style.display = 'none'; return; }
+    fetch(`/api/customers/search?q=${encodeURIComponent(q)}`)
+      .then(r => r.json())
+      .then(data => {
+        customerDropdown.innerHTML = '';
+        if (!data.length) {
+          customerDropdown.innerHTML = '<div class="autocomplete-item" style="color:var(--text-muted);">No customers found</div>';
+        }
+        data.forEach(c => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.innerHTML = `<div>${c.name}</div><div class="item-sub">${c.gstin || 'No GSTIN'} ${c.state ? '· ' + c.state : ''}</div>`;
+          item.onclick = () => {
+            customerInput.value = c.name;
+            customerIdField.value = c.id;
+            customerDropdown.style.display = 'none';
+            document.getElementById('customerInfo').style.display = 'block';
+            document.getElementById('customerInfo').innerHTML = 
+              `GSTIN: <strong>${c.gstin || 'N/A'}</strong> | State: <strong>${c.state || 'N/A'}</strong>`;
+            // Auto set place of supply
+            if (c.state_code) {
+              const ps = document.getElementById('place_of_supply');
+              for (let opt of ps.options) {
+                if (opt.value.startsWith(c.state_code + '-')) { ps.value = opt.value; break; }
+              }
+            }
+          };
+          customerDropdown.appendChild(item);
+        });
+        customerDropdown.style.display = 'block';
+      });
+  }, 300);
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.autocomplete-wrapper')) customerDropdown.style.display = 'none';
+});
+
+// IGST toggle
+document.getElementById('is_igst').addEventListener('change', function() {
+  document.getElementById('row_cgst').style.display = this.checked ? 'none' : 'flex';
+  document.getElementById('row_sgst').style.display = this.checked ? 'none' : 'flex';
+  document.getElementById('row_igst').style.display = this.checked ? 'flex' : 'none';
+  recalculate();
+});
+
+// Submit
+function submitInvoice(status) {
+  const customerId = document.getElementById('customer_id').value;
+  if (!customerId) { alert('Please select a customer.'); return; }
+  const rows = collectLineItems();
+  if (!rows.length) { alert('Add at least one item.'); return; }
+
+  const payload = {
+    customer_id: parseInt(customerId),
+    invoice_type: document.getElementById('invoice_type').value,
+    invoice_date: document.getElementById('invoice_date').value,
+    due_date: document.getElementById('due_date').value,
+    place_of_supply: document.getElementById('place_of_supply').value,
+    is_igst: document.getElementById('is_igst').checked,
+    notes: document.getElementById('notes').value,
+    terms: document.getElementById('terms').value,
+    status: status,
+    items: rows
+  };
+
+  document.getElementById('saveBtn').disabled = true;
+  document.getElementById('saveBtn').textContent = 'Saving...';
+
+  fetch('/invoices/create', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      window.location.href = '/invoices/' + data.invoice_id;
+    } else {
+      alert('Error: ' + (data.error || 'Could not save invoice.'));
+      document.getElementById('saveBtn').disabled = false;
+      document.getElementById('saveBtn').textContent = 'Save Draft';
+    }
+  })
+  .catch(e => {
+    alert('Network error. Please try again.');
+    document.getElementById('saveBtn').disabled = false;
+    document.getElementById('saveBtn').textContent = 'Save Draft';
+  });
+}
+
+// Initialize with one empty row
+addLineItem();
+
+function submitQuickAddCustomer() {
+  const btn = document.getElementById('quickAddBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  
+  const payload = {
+    name: document.getElementById('qa_name').value,
+    phone: document.getElementById('qa_phone').value,
+    state: document.getElementById('qa_state').value,
+    address: document.getElementById('qa_address').value
+  };
+  
+  fetch('/customers/quick-add', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      // Auto-select the newly created customer
+      document.getElementById('customer_id').value = data.customer.id;
+      document.getElementById('customerSearch').value = data.customer.name;
+      
+      const info = document.getElementById('customerInfo');
+      info.style.display = 'block';
+      info.innerHTML = `<strong>${data.customer.name}</strong><br>
+                        ${data.customer.state_code ? 'State: ' + data.customer.state : ''}
+                        ${data.customer.phone ? '<br>Ph: ' + data.customer.phone : ''}`;
+      
+      // Close Modal and Reset
+      document.getElementById('quickAddCustomerModal').classList.remove('active');
+      document.getElementById('quickAddForm').reset();
+    } else {
+      alert('Error: ' + data.message);
+    }
+    btn.disabled = false;
+    btn.textContent = 'Save Customer';
+  })
+  .catch(err => {
+    alert('Network Error');
+    btn.disabled = false;
+    btn.textContent = 'Save Customer';
+  });
+}
+</script>
+
+<!-- Quick Add Customer Modal -->
+<div id="quickAddCustomerModal" class="modal">
+  <div class="modal-content" style="max-width:450px;">
+    <div class="modal-header">
+      <div class="modal-title">⚡ Quick Add Customer</div>
+      <button type="button" class="btn-close" onclick="document.getElementById('quickAddCustomerModal').classList.remove('active')">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="quickAddForm" onsubmit="event.preventDefault(); submitQuickAddCustomer();">
+        <div class="form-group">
+          <label class="form-label">Customer Name <span class="required">*</span></label>
+          <input type="text" id="qa_name" class="form-control" required placeholder="John Doe or ABC Corp">
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="text" id="qa_phone" class="form-control" placeholder="10-digit number">
+          </div>
+          <div class="form-group">
+            <label class="form-label">State</label>
+            <select id="qa_state" class="form-control">
+              <option value="">Select State</option>
+              {% for code, state in INDIAN_STATES %}
+              <option value="{{ code }}-{{ state }}">{{ code }} - {{ state }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Billing Address</label>
+          <textarea id="qa_address" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="modal-footer" style="margin-top:16px;text-align:right;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('quickAddCustomerModal').classList.remove('active')">Cancel</button>
+          <button type="submit" id="quickAddBtn" class="btn btn-primary">Save Customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

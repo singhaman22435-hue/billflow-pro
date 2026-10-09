@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}Bank Reconciliation{% endblock %}
+{% block page_title %}Bank Reconciliation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">🏦 Bank Reconciliation</div>
+    <div class="page-subtitle">Match your bank statement with recorded payments</div>
+  </div>
+</div>
+
+<!-- Upload Section -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header"><div class="card-title">📤 Upload Bank Statement (CSV)</div></div>
+  <div class="card-body">
+    <form method="POST" enctype="multipart/form-data" id="csvForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;">
+        <div class="form-group" style="flex:1;min-width:240px;margin:0;">
+          <label class="form-label">Bank Statement CSV File</label>
+          <input type="file" name="bank_csv" accept=".csv" class="form-control" required
+                 onchange="document.getElementById('fileName').textContent = this.files[0]?.name || ''">
+          <div class="form-hint" id="fileName">Supports most bank statement CSV formats (SBI, HDFC, ICICI, Axis, etc.)</div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="white-space:nowrap;">🔍 Analyze & Match</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if summary %}
+<!-- Summary Stats -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="padding:16px;text-align:center;">
+    <div style="font-size:1.8rem;font-weight:800;color:var(--accent);">{{ summary.total_transactions }}</div>
+    <div class="text-muted" style="font-size:0.82rem;">Credit Transactions</div>
+  </div>
+  <div class="card" style="padding:16px;text-align:center;">
+    <div style="font-size:1.8rem;font-weight:800;color:var(--success);">{{ summary.matched }}</div>
+    <div class="text-muted" style="font-size:0.82rem;">✅ Matched</div>
+  </div>
+  <div class="card" style="padding:16px;text-align:center;">
+    <div style="font-size:1.8rem;font-weight:800;color:var(--danger);">{{ summary.unmatched }}</div>
+    <div class="text-muted" style="font-size:0.82rem;">❌ Unmatched</div>
+  </div>
+  <div class="card" style="padding:16px;text-align:center;">
+    <div style="font-size:1.2rem;font-weight:800;color:var(--accent);">₹{{ '{:,.2f}'.format(summary.total_credits) }}</div>
+    <div class="text-muted" style="font-size:0.82rem;">Total Credits</div>
+  </div>
+</div>
+
+{% if matched %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header" style="background:rgba(16,185,129,0.1);">
+    <div class="card-title" style="color:var(--success);">✅ Matched Transactions ({{ matched|length }})</div>
+    <div class="text-muted" style="font-size:0.82rem;">These bank credits match recorded payments</div>
+  </div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead><tr><th>Bank Date</th><th>Bank Description</th><th class="text-right">Amount</th><th>Matched Payment</th><th>Invoice</th></tr></thead>
+      <tbody>
+        {% for txn in matched %}
+        <tr>
+          <td>{{ txn.date }}</td>
+          <td>{{ txn.description[:60] }}</td>
+          <td class="text-right amt fw-600" style="color:var(--success);">₹{{ '{:,.2f}'.format(txn.amount) }}</td>
+          <td>
+            {% if txn.matched_payment %}
+            <span class="badge badge-success">
+              {{ txn.matched_payment.payment_date.strftime('%d %b') if txn.matched_payment.payment_date else '—' }}
+            </span>
+            {% endif %}
+          </td>
+          <td>
+            {% if txn.matched_payment and txn.matched_payment.invoice %}
+            <a href="{{ url_for('invoices.view', id=txn.matched_payment.invoice_id) }}" style="color:var(--accent);">{{ txn.matched_payment.invoice.invoice_no }}</a>
+            {% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if unmatched %}
+<div class="card">
+  <div class="card-header" style="background:rgba(239,68,68,0.1);">
+    <div class="card-title" style="color:var(--danger);">❌ Unmatched Transactions ({{ unmatched|length }})</div>
+    <div class="text-muted" style="font-size:0.82rem;">These credits in bank statement have no matching payment in BillFlow</div>
+  </div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead><tr><th>Bank Date</th><th>Bank Description</th><th class="text-right">Amount</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for txn in unmatched %}
+        <tr>
+          <td>{{ txn.date }}</td>
+          <td>{{ txn.description[:80] }}</td>
+          <td class="text-right amt fw-600" style="color:var(--danger);">₹{{ '{:,.2f}'.format(txn.amount) }}</td>
+          <td><span class="text-muted" style="font-size:0.82rem;">Record payment manually</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<!-- How to use -->
+<div class="card">
+  <div class="card-body" style="padding:32px;">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:3rem;margin-bottom:8px;">🏦</div>
+      <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px;">How Bank Reconciliation Works</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;max-width:700px;margin:0 auto;">
+      <div style="text-align:center;padding:20px;background:var(--bg-secondary);border-radius:10px;">
+        <div style="font-size:2rem;margin-bottom:8px;">1️⃣</div>
+        <div class="fw-600" style="margin-bottom:6px;">Download CSV</div>
+        <div class="text-muted" style="font-size:0.82rem;">Export bank statement as CSV from your net banking portal</div>
+      </div>
+      <div style="text-align:center;padding:20px;background:var(--bg-secondary);border-radius:10px;">
+        <div style="font-size:2rem;margin-bottom:8px;">2️⃣</div>
+        <div class="fw-600" style="margin-bottom:6px;">Upload Here</div>
+        <div class="text-muted" style="font-size:0.82rem;">Upload the CSV file above — we auto-detect columns</div>
+      </div>
+      <div style="text-align:center;padding:20px;background:var(--bg-secondary);border-radius:10px;">
+        <div style="font-size:2rem;margin-bottom:8px;">3️⃣</div>
+        <div class="fw-600" style="margin-bottom:6px;">Review Matches</div>
+        <div class="text-muted" style="font-size:0.82rem;">We match credits with your recorded payments by amount</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Recent Payments -->
+<div class="card mt-20">
+  <div class="card-header"><div class="card-title">💳 Recent Recorded Payments</div></div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Mode</th><th class="text-right">Amount</th></tr></thead>
+      <tbody>
+        {% for p in recent_payments %}
+        <tr>
+          <td>{{ p.payment_date.strftime('%d %b %Y') if p.payment_date else '—' }}</td>
+          <td><a href="{{ url_for('invoices.view', id=p.invoice_id) }}" style="color:var(--accent);">{{ p.invoice.invoice_no if p.invoice else '—' }}</a></td>
+          <td>{{ p.invoice.customer.name if p.invoice and p.invoice.customer else '—' }}</td>
+          <td><span class="badge badge-info">{{ p.payment_mode or '—' }}</span></td>
+          <td class="text-right amt fw-600" style="color:var(--success);">{{ format_currency(p.amount) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted">No payments recorded yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

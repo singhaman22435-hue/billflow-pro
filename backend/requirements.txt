@@ -1,0 +1,31 @@
+Flask==3.0.3
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-Mail==0.10.0
+Flask-WTF==1.2.1
+Flask-Migrate==4.0.7
+Flask-CORS==4.0.1
+python-dotenv==1.0.1
+Werkzeug==3.0.3
+SQLAlchemy==2.0.31
+num2words==0.5.13
+openpyxl==3.1.5
+PyJWT==2.8.0
+bleach==6.1.0
+# PostgreSQL Adapter for Supabase / Render
+psycopg2-binary==2.9.9
+# WeasyPrint replaced by xhtml2pdf for Windows compatibility
+xhtml2pdf==0.2.16
+gunicorn==21.2.0
+gevent==24.2.1
+Flask-Caching==2.3.0
+Flask-APScheduler==1.13.1
+
+setuptools==68.2.2
+python-dateutil==2.9.0.post0
+Authlib==1.3.1
+requests==2.32.3
+disposable-email-domains==0.0.98
+email-validator==2.1.1
+Flask-Compress==1.14
+Brotli==1.1.0

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Outstanding Report{% endblock %}
+{% block page_title %}Reports{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">Age-Wise Outstanding</div></div>
+</div>
+
+<div class="tabs mb-16">
+  <a href="{{ url_for('reports.sales') }}" class="tab-item">Sales Register</a>
+  <a href="{{ url_for('reports.outstanding') }}" class="tab-item active">Outstanding</a>
+  <a href="{{ url_for('reports.purchase') }}" class="tab-item">Purchase Register</a>
+  <a href="{{ url_for('reports.gstr1') }}" class="tab-item">GSTR-1</a>
+</div>
+
+<!-- Summary Cards -->
+<div class="stats-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:24px;">
+  <div class="stat-card" style="--accent-color:#10b981;">
+    <div class="stat-icon">✅</div>
+    <div class="stat-value" style="font-size:1.1rem;">{{ format_currency(bucket_totals.current) }}</div>
+    <div class="stat-label">Current (Not Due)</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#f59e0b;">
+    <div class="stat-icon">⚠️</div>
+    <div class="stat-value" style="font-size:1.1rem;">{{ format_currency(bucket_totals.days_30) }}</div>
+    <div class="stat-label">1–30 Days</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#f97316;">
+    <div class="stat-icon">🔔</div>
+    <div class="stat-value" style="font-size:1.1rem;">{{ format_currency(bucket_totals.days_60) }}</div>
+    <div class="stat-label">31–60 Days</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#ef4444;">
+    <div class="stat-icon">🚨</div>
+    <div class="stat-value" style="font-size:1.1rem;">{{ format_currency(bucket_totals.days_90) }}</div>
+    <div class="stat-label">61–90 Days</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#dc2626;">
+    <div class="stat-icon">🔴</div>
+    <div class="stat-value" style="font-size:1.1rem;">{{ format_currency(bucket_totals.over_90) }}</div>
+    <div class="stat-label">90+ Days</div>
+  </div>
+</div>
+
+<div class="card mb-16" style="border-color:rgba(99,102,241,0.3);background:linear-gradient(135deg,rgba(99,102,241,0.05),transparent);">
+  <div class="card-body" style="text-align:center;">
+    <div style="font-size:0.85rem;color:var(--text-muted);">Total Outstanding</div>
+    <div style="font-family:'Sora',sans-serif;font-size:2rem;font-weight:800;color:var(--accent);">{{ format_currency(total_outstanding) }}</div>
+  </div>
+</div>
+
+{% for bucket_key, label, color in [
+  ('current', 'Current (Not Due)', 'var(--success)'),
+  ('days_30', '1–30 Days Overdue', 'var(--warning)'),
+  ('days_60', '31–60 Days Overdue', '#f97316'),
+  ('days_90', '61–90 Days Overdue', 'var(--danger)'),
+  ('over_90', '90+ Days Overdue', '#dc2626'),
+] %}
+{% if buckets[bucket_key] %}
+<div class="card mb-16">
+  <div class="card-header">
+    <div class="card-title" style="color:{{ color }};">{{ label }}</div>
+    <span class="amt fw-600" style="color:{{ color }};">{{ format_currency(bucket_totals[bucket_key]) }}</span>
+  </div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr><th>Invoice</th><th>Customer</th><th>Invoice Date</th><th>Due Date</th><th class="text-right">Total</th><th class="text-right">Balance Due</th></tr>
+      </thead>
+      <tbody>
+        {% for inv in buckets[bucket_key] %}
+        <tr>
+          <td class="fw"><a href="{{ url_for('invoices.view', id=inv.id) }}" style="color:var(--accent);">{{ inv.invoice_no }}</a></td>
+          <td>{{ inv.customer.name }}</td>
+          <td>{{ inv.invoice_date.strftime('%d %b %Y') }}</td>
+          <td>{{ inv.due_date.strftime('%d %b %Y') if inv.due_date else '—' }}</td>
+          <td class="text-right amt">{{ format_currency(inv.grand_total) }}</td>
+          <td class="text-right amt fw-700" style="color:{{ color }};">{{ format_currency(inv.balance_due) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endblock %}

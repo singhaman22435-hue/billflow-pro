@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% block title %}Profit & Loss{% endblock %}
+{% block page_title %}Reports{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">Profit & Loss Statement</div></div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('reports.export_pnl', **request.args) }}" class="btn btn-outline">⬇️ Excel</a>
+  </div>
+</div>
+
+<div class="tabs mb-16">
+  <a href="{{ url_for('reports.sales') }}" class="tab-item">Sales</a>
+  <a href="{{ url_for('reports.pnl') }}" class="tab-item active">P&L</a>
+  <a href="{{ url_for('reports.cashbook') }}" class="tab-item">Cash Book</a>
+  <a href="{{ url_for('reports.outstanding') }}" class="tab-item">Outstanding</a>
+  <a href="{{ url_for('reports.gstr1') }}" class="tab-item">GSTR-1</a>
+</div>
+
+<!-- Date Filter -->
+<div class="card mb-16">
+  <div class="card-body">
+    <form method="GET" class="d-flex gap-12 align-center flex-wrap">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">From Date</label>
+        <input type="date" name="from" class="form-control" value="{{ from_date }}">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">To Date</label>
+        <input type="date" name="to" class="form-control" value="{{ to_date }}">
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top:18px;">Generate</button>
+    </form>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px;">
+  <div class="stat-card" style="--accent-color:#6366f1;">
+    <div class="stat-icon">🧾</div>
+    <div class="stat-value">{{ invoice_count }}</div>
+    <div class="stat-label">Invoices</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#10b981;">
+    <div class="stat-icon">📈</div>
+    <div class="stat-value" style="font-size:1rem;">{{ format_currency(revenue) }}</div>
+    <div class="stat-label">Revenue (ex-GST)</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#ef4444;">
+    <div class="stat-icon">📉</div>
+    <div class="stat-value" style="font-size:1rem;">{{ format_currency(total_expenses) }}</div>
+    <div class="stat-label">Total Expenses</div>
+  </div>
+  <div class="stat-card" style="--accent-color:{{ '#10b981' if net_profit >= 0 else '#ef4444' }};">
+    <div class="stat-icon">{{ '💰' if net_profit >= 0 else '📉' }}</div>
+    <div class="stat-value" style="font-size:1rem;color:var(--accent-color);">{{ format_currency(net_profit) }}</div>
+    <div class="stat-label">Net {{ 'Profit' if net_profit >= 0 else 'Loss' }}</div>
+  </div>
+</div>
+
+<!-- P&L Chart -->
+{% if monthly_keys %}
+<div class="card mb-24">
+  <div class="card-header"><div class="card-title">📊 Revenue vs Expense Trend</div></div>
+  <div class="card-body">
+    <canvas id="pnlChart" height="80"></canvas>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid-2" style="gap:20px;align-items:start;">
+  <!-- Income -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" style="color:var(--success);">📈 Income</div>
+      <span class="amt fw-700" style="color:var(--success);">{{ format_currency(revenue) }}</span>
+    </div>
+    <div class="card-body">
+      <div class="total-row">
+        <span class="total-label">Sales Revenue (Taxable)</span>
+        <span class="amt fw-600" style="color:var(--success);">{{ format_currency(revenue) }}</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">GST Collected</span>
+        <span class="amt">{{ format_currency(total_gst) }}</span>
+      </div>
+      <div class="total-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">
+        <span class="total-label fw-700">Total Invoiced</span>
+        <span class="amt fw-700">{{ format_currency(total_revenue_incl_tax) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expenses -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title" style="color:var(--danger);">📉 Expenses</div>
+      <span class="amt fw-700" style="color:var(--danger);">{{ format_currency(total_expenses) }}</span>
+    </div>
+    <div class="card-body">
+      {% for cat, amt in expense_by_cat.items()|sort %}
+      <div class="total-row">
+        <span class="total-label">{{ cat }}</span>
+        <span class="amt" style="color:var(--danger);">{{ format_currency(amt) }}</span>
+      </div>
+      {% else %}
+      <div class="text-muted" style="text-align:center;padding:20px;">No expenses recorded</div>
+      {% endfor %}
+      {% if expense_by_cat %}
+      <div class="total-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">
+        <span class="total-label fw-700">Total Expenses</span>
+        <span class="amt fw-700" style="color:var(--danger);">{{ format_currency(total_expenses) }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Net Result -->
+<div class="card mt-16" style="border-color:{{ 'rgba(16,185,129,0.4)' if net_profit >= 0 else 'rgba(239,68,68,0.4)' }};background:{{ 'rgba(16,185,129,0.05)' if net_profit >= 0 else 'rgba(239,68,68,0.05)' }};">
+  <div class="card-body" style="text-align:center;padding:32px;">
+    <div style="font-size:0.85rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">
+      Net {{ 'Profit' if net_profit >= 0 else 'Loss' }} ({{ from_date }} to {{ to_date }})
+    </div>
+    <div style="font-family:'Sora',sans-serif;font-size:2.5rem;font-weight:800;color:{{ 'var(--success)' if net_profit >= 0 else 'var(--danger)' }};">
+      {{ format_currency(net_profit) }}
+    </div>
+    {% if revenue > 0 %}
+    <div style="font-size:0.85rem;color:var(--text-muted);margin-top:8px;">
+      Profit Margin: {{ "%.1f"|format(net_profit / revenue * 100) }}%
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if monthly_keys %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+const ctx = document.getElementById('pnlChart').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: {{ monthly_keys|tojson }},
+    datasets: [
+      {
+        label: 'Revenue',
+        data: {{ monthly_revenue|tojson }},
+        backgroundColor: 'rgba(99,102,241,0.7)',
+        borderColor: '#6366f1',
+        borderWidth: 1,
+        borderRadius: 5
+      },
+      {
+        label: 'Expenses',
+        data: {{ monthly_expense|tojson }},
+        backgroundColor: 'rgba(239,68,68,0.6)',
+        borderColor: '#ef4444',
+        borderWidth: 1,
+        borderRadius: 5
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: '#a0aec0' } }
+    },
+    scales: {
+      x: { ticks: { color: '#718096' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+      y: { ticks: { color: '#718096', callback: v => '₹' + v.toLocaleString('en-IN') },
+           grid: { color: 'rgba(255,255,255,0.05)' } }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

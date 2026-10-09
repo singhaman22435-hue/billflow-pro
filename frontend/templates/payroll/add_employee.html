@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if emp else 'Add' }} Employee{% endblock %}
+{% block page_title %}Payroll{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">{{ '✏️ Edit Employee' if emp else '+ Add Employee' }}</div></div>
+  <a href="{{ url_for('payroll.employees') }}" class="btn btn-secondary">← Back</a>
+</div>
+
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="grid-2" style="gap:20px;">
+
+    <!-- Basic Info -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">👤 Basic Information</div></div>
+      <div class="card-body">
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Employee Code</label>
+            <input type="text" name="emp_code" class="form-control" value="{{ emp.emp_code if emp else '' }}" placeholder="e.g. EMP001">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Employment Type</label>
+            <select name="employment_type" class="form-control">
+              <option value="full_time" {{ 'selected' if emp and emp.employment_type == 'full_time' }}>Full Time</option>
+              <option value="part_time" {{ 'selected' if emp and emp.employment_type == 'part_time' }}>Part Time</option>
+              <option value="contract" {{ 'selected' if emp and emp.employment_type == 'contract' }}>Contract</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Full Name <span class="required">*</span></label>
+          <input type="text" name="name" class="form-control" value="{{ emp.name if emp else '' }}" required placeholder="Employee full name">
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Designation</label>
+            <input type="text" name="designation" class="form-control" value="{{ emp.designation if emp else '' }}" placeholder="e.g. Software Engineer">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Department</label>
+            <input type="text" name="department" class="form-control" value="{{ emp.department if emp else '' }}" placeholder="e.g. Engineering">
+          </div>
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" value="{{ emp.email if emp else '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="text" name="phone" class="form-control" value="{{ emp.phone if emp else '' }}">
+          </div>
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Date of Joining</label>
+            <input type="date" name="date_of_joining" class="form-control" value="{{ emp.date_of_joining.isoformat() if emp and emp.date_of_joining else '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date of Birth</label>
+            <input type="date" name="date_of_birth" class="form-control" value="{{ emp.date_of_birth.isoformat() if emp and emp.date_of_birth else '' }}">
+          </div>
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">PAN</label>
+            <input type="text" name="pan" class="form-control" value="{{ emp.pan if emp else '' }}" placeholder="ABCDE1234F" style="text-transform:uppercase;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Aadhar Number</label>
+            <input type="text" name="aadhar" class="form-control" value="{{ emp.aadhar if emp else '' }}" placeholder="XXXX-XXXX-XXXX">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Salary + Bank -->
+    <div>
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><div class="card-title">💰 Salary Structure (Monthly)</div></div>
+        <div class="card-body">
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Basic Salary (₹) <span class="required">*</span></label>
+              <input type="number" name="basic_salary" id="basicSalary" class="form-control" step="0.01" min="0" value="{{ emp.basic_salary if emp else '0' }}" required oninput="calcSalary()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">HRA (₹)</label>
+              <input type="number" name="hra" id="hra" class="form-control" step="0.01" min="0" value="{{ emp.hra if emp else '0' }}" oninput="calcSalary()">
+            </div>
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Special Allowance (₹)</label>
+              <input type="number" name="special_allowance" id="specAllow" class="form-control" step="0.01" min="0" value="{{ emp.special_allowance if emp else '0' }}" oninput="calcSalary()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Other Allowance (₹)</label>
+              <input type="number" name="other_allowance" id="otherAllow" class="form-control" step="0.01" min="0" value="{{ emp.other_allowance if emp else '0' }}" oninput="calcSalary()">
+            </div>
+          </div>
+          <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;">
+            <div class="total-row"><span class="total-label">Gross Salary</span><span class="fw-700" style="color:var(--success);" id="grossAmt">₹0</span></div>
+            <div class="total-row"><span class="total-label">PF (12% of Basic)</span><span style="color:var(--danger);" id="pfAmt">₹0</span></div>
+            <div class="total-row"><span class="total-label">ESI (0.75%)</span><span style="color:var(--danger);" id="esiAmt">₹0</span></div>
+            <div class="total-row grand"><span>Net Salary</span><span class="amt fw-700" id="netAmt">₹0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><div class="card-title">🏦 Bank Details</div></div>
+        <div class="card-body">
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Bank Account No</label>
+              <input type="text" name="bank_account_no" class="form-control" value="{{ emp.bank_account_no if emp else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">IFSC Code</label>
+              <input type="text" name="bank_ifsc" class="form-control" value="{{ emp.bank_ifsc if emp else '' }}" style="text-transform:uppercase;">
+            </div>
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Bank Name</label>
+              <input type="text" name="bank_name" class="form-control" value="{{ emp.bank_name if emp else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">UAN Number (PF)</label>
+              <input type="text" name="uan_no" class="form-control" value="{{ emp.uan_no if emp else '' }}" placeholder="Universal Account Number">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">⚙️ Deduction Settings</div></div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" name="pf_applicable" id="pfCheck" style="accent-color:var(--accent);width:16px;height:16px;" {{ 'checked' if (emp and emp.pf_applicable) or not emp }} onchange="calcSalary()">
+              <div>
+                <div class="fw-600">PF Applicable</div>
+                <div class="text-muted" style="font-size:0.82rem;">12% of basic salary deducted as employee PF contribution</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" name="esi_applicable" id="esiCheck" style="accent-color:var(--accent);width:16px;height:16px;" {{ 'checked' if emp and emp.esi_applicable }} onchange="calcSalary()">
+              <div>
+                <div class="fw-600">ESI Applicable</div>
+                <div class="text-muted" style="font-size:0.82rem;">0.75% employee contribution if gross salary ≤ ₹21,000</div>
+              </div>
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+              <input type="checkbox" name="tds_applicable" id="tdsCheck" style="accent-color:var(--accent);width:16px;height:16px;" {{ 'checked' if emp and emp.tds_applicable }}>
+              <div>
+                <div class="fw-600">TDS Applicable</div>
+                <div class="text-muted" style="font-size:0.82rem;">Income tax deducted at source</div>
+              </div>
+            </label>
+            <div class="form-group" style="margin-left:26px;">
+              <label class="form-label">Monthly TDS Amount (₹)</label>
+              <input type="number" name="tds_monthly" class="form-control" step="0.01" min="0" value="{{ emp.tds_monthly if emp else '0' }}" id="tdsAmt" oninput="calcSalary()" style="max-width:200px;">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-12 mt-16">
+    <button type="submit" class="btn btn-primary">💾 {{ 'Update Employee' if emp else 'Add Employee' }}</button>
+    <a href="{{ url_for('payroll.employees') }}" class="btn btn-secondary">Cancel</a>
+  </div>
+</form>
+
+<script>
+function calcSalary() {
+  const basic = parseFloat(document.getElementById('basicSalary').value) || 0;
+  const hra = parseFloat(document.getElementById('hra').value) || 0;
+  const spec = parseFloat(document.getElementById('specAllow').value) || 0;
+  const other = parseFloat(document.getElementById('otherAllow').value) || 0;
+  const gross = basic + hra + spec + other;
+
+  const pfApplicable = document.getElementById('pfCheck').checked;
+  const esiApplicable = document.getElementById('esiCheck').checked;
+  const tds = parseFloat(document.getElementById('tdsAmt').value) || 0;
+
+  const pf = pfApplicable ? Math.round(basic * 0.12 * 100) / 100 : 0;
+  const esi = (esiApplicable && gross <= 21000) ? Math.round(gross * 0.0075 * 100) / 100 : 0;
+  const net = gross - pf - esi - tds;
+
+  const fmt = v => '₹' + v.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('grossAmt').textContent = fmt(gross);
+  document.getElementById('pfAmt').textContent = fmt(pf);
+  document.getElementById('esiAmt').textContent = fmt(esi);
+  document.getElementById('netAmt').textContent = fmt(net);
+}
+calcSalary();
+</script>
+{% endblock %}

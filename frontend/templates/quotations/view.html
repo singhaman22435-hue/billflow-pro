@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}{{ qt.quotation_no }}{% endblock %}
+{% block page_title %}Quotation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ qt.quotation_no }}</div>
+    <div class="page-subtitle">{{ qt.customer.name }} · {{ qt.quotation_date.strftime('%d %b %Y') }}</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('quotations.list') }}" class="btn btn-secondary">← Back</a>
+    <a href="{{ url_for('quotations.download_pdf', id=qt.id, download=1) }}" class="btn btn-outline" target="_blank">📄 Download PDF</a>
+    <a href="{{ url_for('quotations.download_pdf', id=qt.id) }}" class="btn btn-outline" target="_blank">🖨️ Print</a>
+    {% if qt.status == 'draft' %}
+    <form method="POST" action="{{ url_for('quotations.update_status', id=qt.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="status" value="sent">
+      <button class="btn btn-primary">📤 Mark as Sent</button>
+    </form>
+    {% elif qt.status == 'sent' %}
+    <form method="POST" action="{{ url_for('quotations.update_status', id=qt.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="status" value="accepted">
+      <button class="btn btn-success">✅ Mark Accepted</button>
+    </form>
+    <form method="POST" action="{{ url_for('quotations.update_status', id=qt.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="status" value="rejected">
+      <button class="btn btn-danger">❌ Mark Rejected</button>
+    </form>
+    {% endif %}
+    {% if qt.status not in ['converted', 'rejected'] %}
+    <form method="POST" action="{{ url_for('quotations.convert_to_invoice', id=qt.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary" data-confirm="Convert this quotation to an Invoice?">🧾 Convert to Invoice</button>
+    </form>
+    {% elif qt.converted_invoice_id %}
+    <a href="{{ url_for('invoices.view', id=qt.converted_invoice_id) }}" class="btn btn-success">View Invoice →</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2" style="gap:20px;margin-bottom:20px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">Customer Details</div><span class="badge badge-{{ 'success' if qt.status == 'accepted' else ('warning' if qt.status == 'sent' else ('info' if qt.status == 'converted' else 'draft')) }}">{{ qt.status }}</span></div>
+    <div class="card-body">
+      <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">{{ qt.customer.name }}</div>
+      {% if qt.customer.gstin %}<div class="text-muted" style="font-size:0.82rem;">GSTIN: {{ qt.customer.gstin }}</div>{% endif %}
+      {% if qt.customer.address %}<div class="text-muted" style="font-size:0.82rem;">{{ qt.customer.address }}</div>{% endif %}
+      {% if qt.customer.phone %}<div class="text-muted" style="font-size:0.82rem;">📞 {{ qt.customer.phone }}</div>{% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Quotation Summary</div></div>
+    <div class="card-body">
+      <div class="total-row"><span class="total-label">Quotation No</span><span class="fw-600" style="color:var(--accent);">{{ qt.quotation_no }}</span></div>
+      <div class="total-row"><span class="total-label">Date</span><span>{{ qt.quotation_date.strftime('%d %b %Y') }}</span></div>
+      <div class="total-row"><span class="total-label">Valid Till</span><span {% if qt.valid_till and qt.valid_till < today %} style="color:var(--danger);"{% endif %}>{{ qt.valid_till.strftime('%d %b %Y') if qt.valid_till else '—' }}</span></div>
+      <div class="total-row grand"><span>Grand Total</span><span class="amt">{{ format_currency(qt.grand_total) }}</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><div class="card-title">Items</div></div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Description</th><th>HSN</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Rate</th><th class="text-right">Disc %</th><th class="text-right">GST %</th><th class="text-right">Amount</th></tr>
+      </thead>
+      <tbody>
+        {% for item in qt.items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="fw">{{ item.description }}</td>
+          <td>{{ item.hsn_sac or '—' }}</td>
+          <td class="text-right">{{ item.qty }}</td>
+          <td>{{ item.unit }}</td>
+          <td class="text-right amt">{{ format_currency(item.rate) }}</td>
+          <td class="text-right">{{ item.discount_pct }}%</td>
+          <td class="text-right">{{ item.gst_rate }}%</td>
+          <td class="text-right amt fw">{{ format_currency(item.taxable_amount|float + item.cgst_amount|float + item.sgst_amount|float + item.igst_amount|float) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--accent-glow);">
+          <td colspan="8" class="text-right fw-700" style="color:var(--accent);">Grand Total</td>
+          <td class="text-right amt fw-700" style="color:var(--accent);">{{ format_currency(qt.grand_total) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+{% if qt.notes %}
+<div class="card mt-16">
+  <div class="card-header"><div class="card-title">Notes & Terms</div></div>
+  <div class="card-body text-muted" style="font-size:0.9rem;">{{ qt.notes }}</div>
+</div>
+{% endif %}
+
+{% endblock %}

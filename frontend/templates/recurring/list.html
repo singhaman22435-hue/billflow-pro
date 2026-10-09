@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Recurring Invoices{% endblock %}
+{% block page_title %}🔄 Recurring Invoices{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Recurring Invoices</div>
+    <div class="page-subtitle">Auto-generate invoices for repeat clients on schedule</div>
+  </div>
+  <a href="{{ url_for('recurring.create') }}" class="btn btn-primary">+ New Recurring</a>
+</div>
+
+{% if recurrings %}
+<div class="card">
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Name / Customer</th>
+          <th>Frequency</th>
+          <th>Next Date</th>
+          <th>Items</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in recurrings %}
+        <tr>
+          <td class="fw">
+            <div style="font-weight:600;">{{ r.name or 'Untitled' }}</div>
+            <div style="font-size:0.8rem;color:var(--text-muted);">{{ r.customer.name }}</div>
+          </td>
+          <td>
+            <span class="badge badge-info" style="text-transform:capitalize;">{{ r.frequency }}</span>
+          </td>
+          <td>
+            {% if r.next_date %}
+              <span style="{% if r.next_date <= today %}color:var(--danger);font-weight:600;{% endif %}">
+                {{ r.next_date.strftime('%d %b %Y') }}
+                {% if r.next_date <= today %} ⚠️ Due!{% endif %}
+              </span>
+            {% else %}—{% endif %}
+          </td>
+          <td>{{ r.items|length }} item(s)</td>
+          <td>
+            {% if r.is_active %}
+              <span class="badge badge-success">Active</span>
+            {% else %}
+              <span class="badge badge-danger">Paused</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="table-actions">
+              <!-- Generate Now -->
+              <form method="POST" action="{{ url_for('recurring.generate', id=r.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-primary" title="Generate invoice now">⚡ Generate</button>
+              </form>
+              <!-- Pause/Resume -->
+              <form method="POST" action="{{ url_for('recurring.toggle', id=r.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-secondary">{{ '⏸ Pause' if r.is_active else '▶ Resume' }}</button>
+              </form>
+              <!-- Delete -->
+              <form method="POST" action="{{ url_for('recurring.delete', id=r.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-danger" data-confirm="Delete this recurring invoice?">🗑</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% from 'components/pagination.html' import render_pagination %}
+{{ render_pagination(pagination, 'recurring.list') }}
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">🔄</div>
+    <div class="empty-title">No recurring invoices yet</div>
+    <div class="empty-desc">Set up auto-invoicing for monthly retainer clients, subscriptions, or any repeat billing</div>
+    <a href="{{ url_for('recurring.create') }}" class="btn btn-primary">+ Create First Recurring Invoice</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

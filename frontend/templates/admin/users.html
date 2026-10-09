@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}Manage Users - Super Admin{% endblock %}
+{% block page_title %}Users{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Users</div>
+    <div class="page-subtitle">Manage all users on the platform</div>
+  </div>
+  <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+</div>
+
+<div class="card mb-16">
+  <div class="card-body">
+    <form method="GET" style="display:flex;gap:12px;max-width:500px;">
+      <input type="text" name="q" class="form-control" placeholder="Search users by name or email..." value="{{ search }}">
+      <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Role</th>
+          <th>Super Admin</th>
+          <th>Joined Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td class="fw-600">{{ user.name }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.phone or '—' }}</td>
+          <td><span class="badge badge-info">{{ user.role }}</span></td>
+          <td>
+            {% if user.is_super_admin %}
+              <span class="badge badge-success">Yes</span>
+            {% else %}
+              <span class="badge badge-secondary">No</span>
+            {% endif %}
+          </td>
+          <td>{{ user.created_at.strftime('%d %b %Y') }}</td>
+        </tr>
+        {% endfor %}
+        {% if not users %}
+        <tr>
+          <td colspan="6" class="text-center" style="padding:40px;color:var(--text-muted);">
+            No users found matching your search.
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

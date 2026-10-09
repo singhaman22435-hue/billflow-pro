@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}Staff Management{% endblock %}
+{% block page_title %}👥 Staff Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Staff & Team Access</div>
+    <div class="page-subtitle">Manage who can access your BillFlow Pro account</div>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('inviteModal').classList.add('active')">
+    + Invite Staff
+  </button>
+</div>
+
+<!-- Role Permissions Reference -->
+<div class="card mb-16">
+  <div class="card-header"><div class="card-title">🔑 Role Permissions</div></div>
+  <div class="card-body">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;">
+      {% for role, desc, color in [('Owner','Full access + settings','#6366f1'),('Admin','Full access except settings','#8b5cf6'),('Accountant','View, create, edit + reports','#10b981'),('Sales','View, create (No Reports)','#ef4444'),('Viewer','Read-only access','#f59e0b')] %}
+      <div style="background:rgba({{ {'#6366f1':'99,102,241','#8b5cf6':'139,92,246','#10b981':'16,185,129','#ef4444':'239,68,68','#f59e0b':'245,158,11'}[color] }},0.1);border:1px solid rgba({{ {'#6366f1':'99,102,241','#8b5cf6':'139,92,246','#10b981':'16,185,129','#ef4444':'239,68,68','#f59e0b':'245,158,11'}[color] }},0.3);border-radius:10px;padding:12px;">
+        <div style="font-weight:700;color:{{ color }};font-size:0.9rem;">{{ role }}</div>
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">{{ desc }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Staff List -->
+<div class="card">
+  <div class="card-header"><div class="card-title">Team Members ({{ staff|length }})</div></div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Role</th><th>Last Login</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for member in staff %}
+        <tr>
+          <td class="fw">
+            {{ member.name }}
+            {% if member.id == current_user.id %}<span class="badge" style="background:rgba(99,102,241,0.2);color:var(--accent);margin-left:6px;font-size:0.7rem;">You</span>{% endif %}
+          </td>
+          <td>{{ member.email }}</td>
+          <td>
+            {% if member.id == current_user.id or member.role == 'owner' %}
+              <span class="badge badge-{{ 'primary' if member.role == 'owner' else 'info' }}" style="text-transform:capitalize;">{{ member.role }}</span>
+            {% else %}
+            <form method="POST" action="{{ url_for('settings.change_role', user_id=member.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <select name="role" class="form-control" style="padding:4px 8px;font-size:0.82rem;width:auto;" onchange="this.form.submit()">
+                <option value="admin" {{ 'selected' if member.role=='admin' }}>Admin</option>
+                <option value="accountant" {{ 'selected' if member.role=='accountant' }}>Accountant</option>
+                <option value="sales" {{ 'selected' if member.role=='sales' }}>Sales</option>
+                <option value="viewer" {{ 'selected' if member.role=='viewer' }}>Viewer</option>
+              </select>
+            </form>
+            {% endif %}
+          </td>
+          <td style="font-size:0.82rem;color:var(--text-muted);">
+            {{ member.last_login.strftime('%d %b %Y %H:%M') if member.last_login else 'Never' }}
+            {% if member.last_login_ip %}<br><code style="font-size:0.7rem;">{{ member.last_login_ip }}</code>{% endif %}
+          </td>
+          <td>
+            {% if member.is_locked %}
+              <span class="badge badge-danger">🔒 Locked</span>
+            {% elif member.is_active %}
+              <span class="badge badge-success">Active</span>
+            {% else %}
+              <span class="badge badge-danger">Inactive</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if member.id != current_user.id and member.role != 'owner' %}
+            <div class="table-actions">
+              {% if member.is_locked %}
+              <form method="POST" action="{{ url_for('settings.unlock_user', user_id=member.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline" style="color:#10b981;border-color:#10b981;">🔓 Unlock</button>
+              </form>
+              {% endif %}
+              <form method="POST" action="{{ url_for('settings.toggle_user', user_id=member.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-secondary">{{ '❌ Deactivate' if member.is_active else '✅ Activate' }}</button>
+              </form>
+              <form method="POST" action="{{ url_for('settings.remove_user', user_id=member.id) }}" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-danger" data-confirm="Remove {{ member.name }} from your team?">🗑 Remove</button>
+              </form>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Invite Staff Modal -->
+<div class="modal-overlay" id="inviteModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">+ Invite Staff Member</div>
+      <button class="modal-close" onclick="document.getElementById('inviteModal').classList.remove('active')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('settings.invite_staff') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Full Name <span class="required">*</span></label>
+          <input type="text" name="name" class="form-control" placeholder="Staff member's name" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address <span class="required">*</span></label>
+          <input type="email" name="email" class="form-control" placeholder="staff@yourcompany.com" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Role</label>
+          <select name="role" class="form-control">
+            <option value="accountant">Accountant (View, Create, Edit)</option>
+            <option value="admin">Admin (Full Access)</option>
+            <option value="viewer">Viewer (Read Only)</option>
+          </select>
+        </div>
+        <div class="alert" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:12px;font-size:0.82rem;color:var(--accent);">
+          ℹ️ A temporary password will be set. The staff member should change it on first login.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('inviteModal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn btn-primary">➕ Add Staff Member</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

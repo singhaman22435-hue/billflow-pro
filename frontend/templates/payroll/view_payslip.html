@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}{{ ps.payslip_no }}{% endblock %}
+{% block page_title %}Payslip{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ ps.payslip_no }}</div>
+    <div class="page-subtitle">{{ ps.employee.name }} · {{ ps.month }}</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('payroll.payslip_list', month=ps.month) }}" class="btn btn-secondary">← Back</a>
+    <a href="{{ url_for('payroll.download_payslip_pdf', id=ps.id) }}" class="btn btn-primary">📄 Download PDF</a>
+  </div>
+</div>
+
+<!-- Payslip Card -->
+<div class="card" style="max-width:800px;margin:0 auto;">
+  <!-- Header -->
+  <div style="padding:24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <div style="font-size:1.3rem;font-weight:800;color:var(--text);">{{ org.name }}</div>
+      <div class="text-muted" style="font-size:0.85rem;">{{ org.address_line1 or '' }} {{ org.city or '' }}</div>
+      {% if org.gstin %}<div class="text-muted" style="font-size:0.82rem;">GSTIN: {{ org.gstin }}</div>{% endif %}
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:1.5rem;font-weight:900;color:var(--accent);letter-spacing:2px;">PAYSLIP</div>
+      <div class="text-muted" style="font-size:0.85rem;">{{ ps.payslip_no }}</div>
+      <div class="text-muted" style="font-size:0.85rem;">Month: <strong>{{ ps.month }}</strong></div>
+    </div>
+  </div>
+
+  <!-- Employee Details -->
+  <div style="padding:20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div>
+      <div style="font-size:0.75rem;color:var(--accent);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">EMPLOYEE DETAILS</div>
+      <div><span class="text-muted" style="font-size:0.82rem;">Name: </span><span class="fw-600">{{ ps.employee.name }}</span></div>
+      <div><span class="text-muted" style="font-size:0.82rem;">Emp Code: </span><span>{{ ps.employee.emp_code or '—' }}</span></div>
+      <div><span class="text-muted" style="font-size:0.82rem;">Designation: </span><span>{{ ps.employee.designation or '—' }}</span></div>
+      <div><span class="text-muted" style="font-size:0.82rem;">Department: </span><span>{{ ps.employee.department or '—' }}</span></div>
+    </div>
+    <div>
+      <div style="font-size:0.75rem;color:var(--accent);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">PAYMENT INFO</div>
+      <div><span class="text-muted" style="font-size:0.82rem;">Bank: </span><span>{{ ps.employee.bank_name or '—' }}</span></div>
+      <div><span class="text-muted" style="font-size:0.82rem;">Account No: </span><span>{{ ('***' + ps.employee.bank_account_no[-4:]) if ps.employee.bank_account_no and ps.employee.bank_account_no|length > 4 else (ps.employee.bank_account_no or '—') }}</span></div>
+      <div><span class="text-muted" style="font-size:0.82rem;">UAN: </span><span>{{ ps.employee.uan_no or '—' }}</span></div>
+      <div><span class="text-muted" style="font-size:0.82rem;">Paid Days: </span><span class="fw-600">{{ ps.paid_days }}/{{ ps.working_days }}</span></div>
+    </div>
+  </div>
+
+  <!-- Earnings & Deductions Table -->
+  <div style="padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;border-bottom:1px solid var(--border);">
+    <div>
+      <div style="font-size:0.75rem;color:var(--success);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">EARNINGS</div>
+      <div class="total-row"><span class="total-label">Basic Salary</span><span class="amt">{{ format_currency(ps.basic_salary) }}</span></div>
+      <div class="total-row"><span class="total-label">HRA</span><span class="amt">{{ format_currency(ps.hra) }}</span></div>
+      <div class="total-row"><span class="total-label">Special Allowance</span><span class="amt">{{ format_currency(ps.special_allowance) }}</span></div>
+      {% if ps.other_allowance > 0 %}<div class="total-row"><span class="total-label">Other Allowance</span><span class="amt">{{ format_currency(ps.other_allowance) }}</span></div>{% endif %}
+      {% if ps.bonus > 0 %}<div class="total-row"><span class="total-label">Bonus</span><span class="amt">{{ format_currency(ps.bonus) }}</span></div>{% endif %}
+      {% if ps.overtime > 0 %}<div class="total-row"><span class="total-label">Overtime</span><span class="amt">{{ format_currency(ps.overtime) }}</span></div>{% endif %}
+      <div class="total-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">
+        <span style="font-weight:700;color:var(--success);">Gross Earnings</span>
+        <span class="amt fw-700" style="color:var(--success);">{{ format_currency(ps.gross_earnings) }}</span>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:0.75rem;color:var(--danger);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">DEDUCTIONS</div>
+      {% if ps.pf_deduction > 0 %}<div class="total-row"><span class="total-label">PF (12%)</span><span style="color:var(--danger);">{{ format_currency(ps.pf_deduction) }}</span></div>{% endif %}
+      {% if ps.esi_deduction > 0 %}<div class="total-row"><span class="total-label">ESI (0.75%)</span><span style="color:var(--danger);">{{ format_currency(ps.esi_deduction) }}</span></div>{% endif %}
+      {% if ps.tds_deduction > 0 %}<div class="total-row"><span class="total-label">TDS</span><span style="color:var(--danger);">{{ format_currency(ps.tds_deduction) }}</span></div>{% endif %}
+      {% if ps.other_deduction > 0 %}<div class="total-row"><span class="total-label">Other</span><span style="color:var(--danger);">{{ format_currency(ps.other_deduction) }}</span></div>{% endif %}
+      <div class="total-row" style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;">
+        <span style="font-weight:700;color:var(--danger);">Total Deductions</span>
+        <span style="color:var(--danger);font-weight:700;">{{ format_currency(ps.total_deductions) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Net Pay -->
+  <div style="padding:20px;text-align:center;background:var(--accent-glow);border-radius:0 0 12px 12px;">
+    <div style="font-size:0.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">NET SALARY PAYABLE</div>
+    <div style="font-size:2.5rem;font-weight:900;color:var(--accent);">₹{{ format_currency(ps.net_salary) }}</div>
+    {% if ps.paid %}
+    <span class="badge badge-success" style="margin-top:8px;">✅ Paid on {{ ps.paid_date.strftime('%d %b %Y') if ps.paid_date else '—' }}</span>
+    {% else %}
+    <span class="badge badge-warning" style="margin-top:8px;">⏳ Payment Pending</span>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

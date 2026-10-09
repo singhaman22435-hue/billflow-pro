@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if item else 'Add' }} Item{% endblock %}
+{% block page_title %}{{ 'Edit' if item else 'Add' }} Item{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">{{ 'Edit Item' if item else 'Add New Item' }}</div></div>
+  <a href="{{ url_for('items.list') }}" class="btn btn-secondary">← Back</a>
+</div>
+
+<div style="max-width:700px;">
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="card">
+      <div class="card-header"><div class="card-title">📦 Item Details</div></div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">Item Name <span class="required">*</span></label>
+          <input type="text" name="name" class="form-control" value="{{ item.name if item else '' }}" required placeholder="Product or service name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="2" placeholder="Optional description">{{ item.description if item else '' }}</textarea>
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Item Type</label>
+            <select name="item_type" class="form-control">
+              <option value="goods" {{ 'selected' if (item and item.item_type == 'goods') or (not item) else '' }}>Goods (Products)</option>
+              <option value="service" {{ 'selected' if item and item.item_type == 'service' else '' }}>Service</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">HSN / SAC Code</label>
+            <input type="text" name="hsn_sac" class="form-control" value="{{ item.hsn_sac if item else '' }}" placeholder="e.g. 8471 or 998313">
+            <div class="form-help">HSN for goods, SAC for services</div>
+          </div>
+        </div>
+        <div class="form-row col-3">
+          <div class="form-group">
+            <label class="form-label">Unit of Measure</label>
+            <select name="unit" class="form-control">
+              {% for u in ['Nos','Pcs','Kg','Gm','Ltr','Mtr','Sqft','Box','Set','Hrs','Day','Month','Yr'] %}
+              <option {{ 'selected' if (item and item.unit == u) or (not item and u == 'Nos') else '' }}>{{ u }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Selling Price (₹)</label>
+            <input type="number" name="selling_price" class="form-control" value="{{ item.selling_price if item else '' }}" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Purchase Price (₹)</label>
+            <input type="number" name="purchase_price" class="form-control" value="{{ item.purchase_price if item else '' }}" step="0.01" min="0" placeholder="0.00">
+          </div>
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">GST Rate (%)</label>
+            <select name="gst_rate" class="form-control">
+              {% for r in [0, 5, 12, 18, 28] %}
+              <option value="{{ r }}" {{ 'selected' if (item and item.gst_rate == r) or (not item and r == 18) else '' }}>{{ r }}%</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cess Rate (%)</label>
+            <input type="number" name="cess_rate" class="form-control" value="{{ item.cess_rate if item else 0 }}" step="0.01" min="0">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-12 mt-16">
+      <button type="submit" class="btn btn-primary">💾 {{ 'Update Item' if item else 'Add Item' }}</button>
+      <a href="{{ url_for('items.list') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

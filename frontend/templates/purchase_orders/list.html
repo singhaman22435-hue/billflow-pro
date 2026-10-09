@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Purchase Orders{% endblock %}
+{% block page_title %}Purchase Orders{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">Purchase Orders</div></div>
+  <a href="{{ url_for('purchase_orders.create') }}" class="btn btn-primary">+ New PO</a>
+</div>
+
+<div class="tabs mb-16">
+  <a href="{{ url_for('purchase_orders.list') }}" class="tab-item {{ 'active' if not status }}">All</a>
+  <a href="{{ url_for('purchase_orders.list', status='draft') }}" class="tab-item {{ 'active' if status == 'draft' }}">Draft</a>
+  <a href="{{ url_for('purchase_orders.list', status='sent') }}" class="tab-item {{ 'active' if status == 'sent' }}">Sent</a>
+  <a href="{{ url_for('purchase_orders.list', status='received') }}" class="tab-item {{ 'active' if status == 'received' }}">Received</a>
+</div>
+
+{% if pos %}
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr><th>PO No</th><th>Vendor</th><th>Date</th><th>Delivery Date</th><th class="text-right">Amount</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for po in pos %}
+      <tr>
+        <td class="fw" style="color:var(--accent);">{{ po.po_no }}</td>
+        <td>{{ po.vendor.name }}</td>
+        <td>{{ po.po_date.strftime('%d %b %Y') }}</td>
+        <td>{{ po.delivery_date.strftime('%d %b %Y') if po.delivery_date else '—' }}</td>
+        <td class="text-right amt fw">{{ format_currency(po.grand_total) }}</td>
+        <td><span class="badge badge-{{ 'success' if po.status == 'received' else ('info' if po.status == 'sent' else 'draft') }}">{{ po.status }}</span></td>
+        <td>
+          <div class="table-actions">
+            <a href="{{ url_for('purchase_orders.view', id=po.id) }}" class="btn btn-sm btn-secondary">View</a>
+            <a href="{{ url_for('purchase_orders.download_pdf', id=po.id, download=1) }}" class="btn btn-sm btn-outline" target="_blank" title="Download PDF">📄 PDF</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% from 'components/pagination.html' import render_pagination %}
+{{ render_pagination(pagination, 'purchase_orders.list') }}
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">📦</div>
+    <div class="empty-title">No purchase orders yet</div>
+    <a href="{{ url_for('purchase_orders.create') }}" class="btn btn-primary">+ Create PO</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

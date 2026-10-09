@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Manage Organizations{% endblock %}
+{% block page_title %}Organizations{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">All Organizations</div></div>
+  <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">← Dashboard</a>
+</div>
+
+<div class="card mb-16">
+  <div class="card-body">
+    <form method="GET" class="d-flex gap-12 align-center">
+      <input type="text" name="q" class="form-control" placeholder="Search organization..." value="{{ search }}">
+      <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+  </div>
+</div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Organization Name</th><th>Current Plan</th><th>Status</th><th>Joined Date</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for org in orgs %}
+      <tr>
+        <td>{{ org.id }}</td>
+        <td class="fw">{{ org.name }}</td>
+        <td>
+          <span class="badge badge-{{ 'success' if org.plan == 'pro' else ('info' if org.plan == 'basic' else 'draft') }}">
+            {{ org.plan | upper }}
+          </span>
+        </td>
+        <td>
+          {% if org.is_active %}
+            <span class="badge badge-success">Active</span>
+          {% else %}
+            <span class="badge badge-danger">Suspended</span>
+          {% endif %}
+        </td>
+        <td>{{ org.created_at.strftime('%d %b %Y') }}</td>
+        <td>
+          <button class="btn btn-sm btn-outline" onclick="openPlanModal({{ org.id }}, '{{ org.plan }}', {{ 'true' if org.is_active else 'false' }}, '{{ org.name }}')">
+            Manage
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Manage Org Modal -->
+<div id="planModal" class="modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
+  <div class="card" style="width:400px;background:var(--bg-card);">
+    <div class="card-header"><div class="card-title">Manage <span id="m_orgName" style="color:var(--accent);"></span></div></div>
+    <form id="planForm" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">Plan</label>
+          <select name="plan" id="m_plan" class="form-control">
+            <option value="free">Free</option>
+            <option value="basic">Basic</option>
+            <option value="pro">Pro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select name="is_active" id="m_status" class="form-control">
+            <option value="true">Active</option>
+            <option value="false">Suspended</option>
+          </select>
+        </div>
+        <div class="d-flex gap-8 mt-16" style="justify-content:flex-end;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('planModal').style.display='none'">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openPlanModal(id, plan, isActive, name) {
+  document.getElementById('m_orgName').innerText = name;
+  document.getElementById('m_plan').value = plan;
+  document.getElementById('m_status').value = isActive ? 'true' : 'false';
+  document.getElementById('planForm').action = '/admin/organizations/' + id + '/update_plan';
+  document.getElementById('planModal').style.display = 'flex';
+}
+</script>
+{% endblock %}

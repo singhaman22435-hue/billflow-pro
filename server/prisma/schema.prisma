@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id                   Int      @id @default(autoincrement())
+  name                 String
+  legal_name           String?
+  email                String?
+  phone                String?
+  address_line1        String?
+  address_line2        String?
+  city                 String?
+  state                String?
+  state_code           String?
+  pincode              String?
+  gstin                String?
+  pan                  String?
+  website              String?
+  logo_url             String?
+  bank_name            String?
+  bank_account_no      String?
+  bank_ifsc            String?
+  bank_branch          String?
+  invoice_prefix       String   @default("INV")
+  invoice_start_no     Int      @default(1)
+  default_payment_terms Int      @default(30)
+  default_notes        String?
+  default_terms        String?
+  created_at           DateTime @default(now())
+
+  users                User[]
+  customers            Customer[]
+  items                Item[]
+  invoices             Invoice[]
+}
+
+model User {
+  id             Int      @id @default(autoincrement())
+  org_id         Int
+  name           String
+  email          String   @unique
+  password_hash  String
+  role           String   @default("viewer")
+  is_active      Boolean  @default(true)
+  is_super_admin Boolean  @default(false)
+  profile_pic    String?
+  created_at     DateTime @default(now())
+
+  organization   Organization @relation(fields: [org_id], references: [id])
+}
+
+model Customer {
+  id              Int      @id @default(autoincrement())
+  org_id          Int
+  name            String
+  display_name    String?
+  company_name    String?
+  email           String?
+  phone           String?
+  gstin           String?
+  pan             String?
+  billing_address String?
+  billing_city    String?
+  billing_state   String?
+  billing_pincode String?
+  shipping_same   Boolean  @default(true)
+  created_at      DateTime @default(now())
+
+  organization    Organization @relation(fields: [org_id], references: [id])
+  invoices        Invoice[]
+}
+
+model Item {
+  id             Int      @id @default(autoincrement())
+  org_id         Int
+  name           String
+  description    String?
+  hsn_sac        String?
+  item_type      String   @default("goods")
+  unit           String   @default("pcs")
+  selling_price  Float    @default(0)
+  purchase_price Float    @default(0)
+  gst_rate       Float    @default(0)
+  is_active      Boolean  @default(true)
+  created_at     DateTime @default(now())
+
+  organization   Organization @relation(fields: [org_id], references: [id])
+}
+
+model Invoice {
+  id             Int      @id @default(autoincrement())
+  org_id         Int
+  customer_id    Int
+  invoice_no     String
+  invoice_type   String   @default("tax_invoice")
+  invoice_date   DateTime
+  due_date       DateTime?
+  place_of_supply String?
+  subtotal       Float    @default(0)
+  cgst_total     Float    @default(0)
+  sgst_total     Float    @default(0)
+  igst_total     Float    @default(0)
+  round_off      Float    @default(0)
+  total_amount   Float    @default(0)
+  amount_paid    Float    @default(0)
+  balance_due    Float    @default(0)
+  status         String   @default("draft")
+  notes          String?
+  terms          String?
+  created_at     DateTime @default(now())
+
+  organization   Organization @relation(fields: [org_id], references: [id])
+  customer       Customer     @relation(fields: [customer_id], references: [id])
+  items          InvoiceItem[]
+}
+
+model InvoiceItem {
+  id             Int      @id @default(autoincrement())
+  invoice_id     Int
+  item_id        Int?
+  item_name      String
+  description    String?
+  hsn_sac        String?
+  quantity       Float
+  unit           String   @default("pcs")
+  rate           Float
+  discount_amount Float   @default(0)
+  taxable_amount Float    @default(0)
+  gst_rate       Float    @default(0)
+  cgst_amount    Float    @default(0)
+  sgst_amount    Float    @default(0)
+  igst_amount    Float    @default(0)
+  total_amount   Float    @default(0)
+
+  invoice        Invoice  @relation(fields: [invoice_id], references: [id])
+}

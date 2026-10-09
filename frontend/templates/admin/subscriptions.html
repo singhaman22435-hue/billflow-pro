@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Manage Subscriptions{% endblock %}
+{% block page_title %}Manual UPI Subscriptions{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Manage Subscriptions</div>
+    <div class="page-subtitle">Approve or reject manual UPI payments</div>
+  </div>
+</div>
+
+<div class="tabs mb-16">
+  <a href="{{ url_for('admin.subscriptions', status='pending_approval') }}" class="tab-item {{ 'active' if status == 'pending_approval' }}">Pending</a>
+  <a href="{{ url_for('admin.subscriptions', status='paid') }}" class="tab-item {{ 'active' if status == 'paid' }}">Approved</a>
+  <a href="{{ url_for('admin.subscriptions', status='failed') }}" class="tab-item {{ 'active' if status == 'failed' }}">Rejected</a>
+</div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Organization</th>
+        <th>Plan</th>
+        <th>Amount</th>
+        <th>UTR / Ref</th>
+        <th>Screenshot</th>
+        <th>Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sub in subscriptions %}
+      <tr>
+        <td>#{{ sub.id }}</td>
+        <td class="fw">{{ sub.organization.name }}</td>
+        <td><span class="badge badge-info">{{ sub.plan_name }}</span></td>
+        <td class="fw text-accent">₹{{ sub.amount }}</td>
+        <td style="font-family:monospace;">{{ sub.payment_reference_id }}</td>
+        <td>
+          {% if sub.upi_screenshot_url %}
+          <a href="{{ sub.upi_screenshot_url }}" target="_blank" class="btn btn-sm btn-outline">View Image</a>
+          {% else %}
+          <span class="text-muted">No Image</span>
+          {% endif %}
+        </td>
+        <td>{{ sub.created_at.strftime('%d %b %Y, %H:%M') }}</td>
+        <td>
+          {% if sub.status == 'pending_approval' %}
+          <div style="display:flex;gap:8px;">
+            <form method="POST" action="{{ url_for('admin.approve_subscription', id=sub.id) }}" onsubmit="return confirm('Approve this payment?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-success">✅ Approve</button>
+            </form>
+            <form method="POST" action="{{ url_for('admin.reject_subscription', id=sub.id) }}" onsubmit="return confirm('Reject this payment?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-danger">❌ Reject</button>
+            </form>
+          </div>
+          {% else %}
+          <span class="badge badge-{{ 'success' if sub.status == 'paid' else 'danger' }}">{{ sub.status }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" class="text-center" style="padding:40px;">No subscriptions found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

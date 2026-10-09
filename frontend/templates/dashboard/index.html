@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Good day, {{ current_user.name.split()[0] }}! 👋</div>
+    <div class="page-subtitle">{{ today.strftime('%A, %d %B %Y') }}</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('invoices.create') }}" class="btn btn-primary">+ New Invoice</a>
+    <a href="{{ url_for('quotations.create') }}" class="btn btn-secondary">+ Quotation</a>
+  </div>
+</div>
+
+<!-- Smart Alerts -->
+{% if low_stock_alerts %}
+<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">
+  <span style="font-size:1.3rem;">⚠️</span>
+  <div style="flex:1;">
+    <strong style="color:#f59e0b;">Low Stock Alert!</strong>
+    {% for item in low_stock_alerts[:3] %}
+    <span class="badge" style="background:rgba(245,158,11,0.2);color:#b45309;margin-left:6px;">{{ item.name }} ({{ item.current_stock }} {{ item.unit }})</span>
+    {% endfor %}
+    {% if low_stock_alerts|length > 3 %}<span style="color:#f59e0b;margin-left:6px;">+{{ low_stock_alerts|length - 3 }} more</span>{% endif %}
+  </div>
+  <a href="{{ url_for('inventory.index') }}" class="btn btn-sm btn-outline" style="color:#f59e0b;border-color:#f59e0b;">View Inventory</a>
+</div>
+{% endif %}
+
+{% if recurring_due > 0 %}
+<div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px;">
+  <span style="font-size:1.3rem;">🔄</span>
+  <div style="flex:1;">
+    <strong style="color:var(--accent);">{{ recurring_due }} Recurring Invoice(s) due!</strong>
+    <span style="color:var(--text-muted);font-size:0.85rem;margin-left:8px;">Generate them now to keep billing on track.</span>
+  </div>
+  <a href="{{ url_for('recurring.list') }}" class="btn btn-sm btn-primary">Generate Now</a>
+</div>
+{% endif %}
+
+<!-- KPI CARDS -->
+<div class="stats-grid">
+  <div class="stat-card" style="--accent-color:#6366f1;--accent-bg:rgba(99,102,241,0.1);">
+    <div class="stat-icon">💰</div>
+    <div class="stat-value">{{ format_currency(total_revenue) }}</div>
+    <div class="stat-label">Total Revenue</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#10b981;--accent-bg:rgba(16,185,129,0.1);">
+    <div class="stat-icon">📅</div>
+    <div class="stat-value">{{ format_currency(monthly_revenue) }}</div>
+    <div class="stat-label">This Month</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#f59e0b;--accent-bg:rgba(245,158,11,0.1);">
+    <div class="stat-icon">⏳</div>
+    <div class="stat-value">{{ format_currency(outstanding) }}</div>
+    <div class="stat-label">Outstanding</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#ef4444;--accent-bg:rgba(239,68,68,0.1);">
+    <div class="stat-icon">🔴</div>
+    <div class="stat-value">{{ format_currency(overdue) }}</div>
+    <div class="stat-label">Overdue</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#3b82f6;--accent-bg:rgba(59,130,246,0.1);">
+    <div class="stat-icon">🧾</div>
+    <div class="stat-value">{{ total_invoices }}</div>
+    <div class="stat-label">Total Invoices</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#8b5cf6;--accent-bg:rgba(139,92,246,0.1);">
+    <div class="stat-icon">👥</div>
+    <div class="stat-value">{{ total_customers }}</div>
+    <div class="stat-label">Customers</div>
+  </div>
+</div>
+
+<!-- CHARTS + RECENT -->
+<div class="grid-2" style="gap:24px;margin-bottom:24px;">
+  <!-- Revenue Chart -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">💰 Revenue Trend (Last 6 Months)</div>
+    </div>
+    <div class="card-body">
+      <canvas id="revenueChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Invoice Count Chart -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">🧾 Invoices Created (Last 6 Months)</div>
+    </div>
+    <div class="card-body">
+      <canvas id="invoiceChart" height="200"></canvas>
+    </div>
+  </div>
+</div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Top Customers</div>
+      <a href="{{ url_for('customers.list') }}" class="btn btn-sm btn-secondary">View All</a>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if top_customers %}
+      {% for c in top_customers %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;">
+            {{ c.name[0].upper() }}
+          </div>
+          <span style="font-weight:500;color:var(--text-primary);">{{ c.name }}</span>
+        </div>
+        <span class="amt" style="color:var(--accent);font-weight:600;">{{ format_currency(c.total or 0) }}</span>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div class="empty-state" style="padding:30px;">
+        <div class="empty-icon">👥</div>
+        <div class="empty-title">No customers yet</div>
+        <a href="{{ url_for('customers.add') }}" class="btn btn-primary btn-sm">Add Customer</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- RECENT INVOICES -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Recent Invoices</div>
+    <a href="{{ url_for('invoices.list') }}" class="btn btn-sm btn-secondary">View All →</a>
+  </div>
+  {% if recent_invoices %}
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Invoice No</th>
+          <th>Customer</th>
+          <th>Date</th>
+          <th>Due Date</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in recent_invoices %}
+        <tr>
+          <td class="fw"><a href="{{ url_for('invoices.view', id=inv.id) }}">{{ inv.invoice_no }}</a></td>
+          <td>{{ inv.customer.name }}</td>
+          <td>{{ inv.invoice_date.strftime('%d %b %Y') }}</td>
+          <td>{{ inv.due_date.strftime('%d %b %Y') if inv.due_date else '—' }}</td>
+          <td class="amt fw">{{ format_currency(inv.grand_total) }}</td>
+          <td>
+            <span class="badge badge-{{ inv.status }}">
+              {{ '✅' if inv.status == 'paid' else ('⚠️' if inv.status == 'partial' else '●') }}
+              {{ inv.status }}
+            </span>
+          </td>
+          <td>
+            <div class="table-actions">
+              <a href="{{ url_for('invoices.view', id=inv.id) }}" class="btn btn-sm btn-secondary">View</a>
+              <a href="{{ url_for('invoices.download_pdf', id=inv.id) }}" class="btn btn-sm btn-outline" title="Download PDF" target="_blank">⬇️</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🧾</div>
+    <div class="empty-title">No invoices yet</div>
+    <div class="empty-desc">Create your first GST invoice in seconds</div>
+    <a href="{{ url_for('invoices.create') }}" class="btn btn-primary">+ Create Invoice</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const monthlyData = {{ monthly_data | tojson }};
+const ctx = document.getElementById('revenueChart').getContext('2d');
+
+const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+gradient.addColorStop(0, 'rgba(99,102,241,0.3)');
+gradient.addColorStop(1, 'rgba(99,102,241,0)');
+
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: monthlyData.map(d => d.month),
+    datasets: [{
+      label: 'Revenue',
+      data: monthlyData.map(d => d.revenue),
+      borderColor: '#6366f1',
+      backgroundColor: gradient,
+      borderWidth: 2.5,
+      tension: 0.4,
+      fill: true,
+      pointBackgroundColor: '#6366f1',
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#111827',
+        borderColor: '#1e2d45',
+        borderWidth: 1,
+        titleColor: '#f9fafb',
+        bodyColor: '#9ca3af',
+        callbacks: {
+          label: ctx => '₹' + ctx.raw.toLocaleString('en-IN')
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(30,45,69,0.5)' },
+        ticks: { color: '#6b7280', font: { size: 11 } }
+      },
+      y: {
+        grid: { color: 'rgba(30,45,69,0.5)' },
+        ticks: {
+          color: '#6b7280',
+          font: { size: 11 },
+          callback: v => '₹' + (v/1000).toFixed(0) + 'k'
+        }
+      }
+    }
+  }
+});
+
+// Invoice Count Bar Chart
+const ctx2 = document.getElementById('invoiceChart').getContext('2d');
+new Chart(ctx2, {
+  type: 'bar',
+  data: {
+    labels: monthlyData.map(d => d.month),
+    datasets: [{
+      label: 'Invoices',
+      data: monthlyData.map(d => d.invoice_count),
+      backgroundColor: 'rgba(139,92,246,0.6)',
+      borderColor: '#8b5cf6',
+      borderWidth: 2,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#111827',
+        borderColor: '#1e2d45',
+        borderWidth: 1,
+        titleColor: '#f9fafb',
+        bodyColor: '#9ca3af',
+        callbacks: {
+          label: ctx => ctx.raw + ' invoices'
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(30,45,69,0.5)' },
+        ticks: { color: '#6b7280', font: { size: 11 } }
+      },
+      y: {
+        grid: { color: 'rgba(30,45,69,0.5)' },
+        ticks: { color: '#6b7280', font: { size: 11 }, stepSize: 1 },
+        beginAtZero: true
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

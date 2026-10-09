@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% block title %}New Quotation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Create Quotation</div>
+    <div class="page-subtitle">Quotation No: <strong>{{ next_no }}</strong></div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('quotations.list') }}" class="btn btn-secondary">← Back</a>
+    <button type="button" class="btn btn-primary" onclick="submitQuotation()">💾 Save Quotation</button>
+  </div>
+</div>
+
+<form id="quotationForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="invoice-builder">
+    <div>
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">📋 Quotation Details</div></div>
+        <div class="card-body">
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Customer <span class="required">*</span></label>
+              <div class="autocomplete-wrapper">
+                <input type="text" id="customerSearch" class="form-control" placeholder="Search customer..." autocomplete="off">
+                <div class="autocomplete-dropdown" id="customerDropdown"></div>
+              </div>
+              <input type="hidden" id="customer_id">
+            </div>
+            <div></div>
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Quotation Date</label>
+              <input type="date" id="quotation_date" class="form-control" value="{{ today.isoformat() }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Valid Till</label>
+              <input type="date" id="valid_till" class="form-control">
+            </div>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="is_igst" style="accent-color:var(--accent);width:16px;height:16px;">
+              <span class="form-label" style="margin:0;">Inter-state (IGST)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">📦 Line Items</div></div>
+        <div class="line-items-table">
+          <table id="lineItemsTable">
+            <thead>
+              <tr>
+                <th>#</th><th style="min-width:200px;">Item</th><th>HSN</th>
+                <th>Qty</th><th>Unit</th><th>Rate</th><th>Disc%</th><th>GST%</th><th>Amount</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="lineItemsBody"></tbody>
+          </table>
+          <button type="button" class="add-line-btn" onclick="addLineItem()">+ Add Item</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Notes</label>
+              <textarea id="notes" class="form-control" rows="2" placeholder="Notes..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Terms</label>
+              <textarea id="terms" class="form-control" rows="2" placeholder="Terms..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="invoice-totals-box">
+      <div style="font-weight:700;margin-bottom:16px;">📊 Summary</div>
+      <div class="total-row"><span class="total-label">Subtotal</span><span class="amt" id="t_subtotal">₹0.00</span></div>
+      <div class="total-row"><span class="total-label">Discount</span><span class="amt" id="t_discount">-₹0.00</span></div>
+      <div class="total-row"><span class="total-label">Taxable</span><span class="amt" id="t_taxable">₹0.00</span></div>
+      <div class="total-row" id="row_cgst"><span class="total-label">CGST</span><span class="amt" id="t_cgst">₹0.00</span></div>
+      <div class="total-row" id="row_sgst"><span class="total-label">SGST</span><span class="amt" id="t_sgst">₹0.00</span></div>
+      <div class="total-row" id="row_igst" style="display:none;"><span class="total-label">IGST</span><span class="amt" id="t_igst">₹0.00</span></div>
+      <div class="total-row grand"><span>Total</span><span class="amt" id="t_grand">₹0.00</span></div>
+      <button type="button" class="btn btn-primary mt-16" onclick="submitQuotation()" style="width:100%;justify-content:center;">💾 Save</button>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/invoice_builder.js') }}"></script>
+<script>
+// Customer autocomplete (same as invoice)
+const customerInput = document.getElementById('customerSearch');
+const customerDropdown = document.getElementById('customerDropdown');
+const customerIdField = document.getElementById('customer_id');
+let timer;
+customerInput.addEventListener('input', () => {
+  clearTimeout(timer);
+  timer = setTimeout(() => {
+    const q = customerInput.value.trim();
+    if (!q) { customerDropdown.style.display='none'; return; }
+    fetch(`/api/customers/search?q=${encodeURIComponent(q)}`)
+      .then(r=>r.json()).then(data=>{
+        customerDropdown.innerHTML='';
+        data.forEach(c=>{
+          const d=document.createElement('div');
+          d.className='autocomplete-item';
+          d.innerHTML=`<div>${c.name}</div><div class="item-sub">${c.gstin||'No GSTIN'}</div>`;
+          d.onclick=()=>{customerInput.value=c.name;customerIdField.value=c.id;customerDropdown.style.display='none';};
+          customerDropdown.appendChild(d);
+        });
+        customerDropdown.style.display='block';
+      });
+  }, 300);
+});
+document.addEventListener('click',e=>{ if(!e.target.closest('.autocomplete-wrapper')) customerDropdown.style.display='none'; });
+
+document.getElementById('is_igst').addEventListener('change', function() {
+  document.getElementById('row_cgst').style.display = this.checked?'none':'flex';
+  document.getElementById('row_sgst').style.display = this.checked?'none':'flex';
+  document.getElementById('row_igst').style.display = this.checked?'flex':'none';
+  recalculate();
+});
+
+function submitQuotation() {
+  if (!document.getElementById('customer_id').value) { alert('Select customer'); return; }
+  const rows = collectLineItems();
+  if (!rows.length) { alert('Add at least one item'); return; }
+  const payload = {
+    customer_id: parseInt(document.getElementById('customer_id').value),
+    quotation_date: document.getElementById('quotation_date').value,
+    valid_till: document.getElementById('valid_till').value,
+    is_igst: document.getElementById('is_igst').checked,
+    notes: document.getElementById('notes').value,
+    terms: document.getElementById('terms').value,
+    items: rows
+  };
+  fetch('/quotations/create', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRFToken':document.querySelector('[name=csrf_token]').value},
+    body:JSON.stringify(payload)
+  }).then(r=>r.json()).then(d=>{
+    if(d.success) window.location.href='/quotations';
+    else alert('Error saving quotation');
+  });
+}
+
+addLineItem();
+</script>
+{% endblock %}

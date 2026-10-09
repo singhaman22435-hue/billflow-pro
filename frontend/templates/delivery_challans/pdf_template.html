@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ dc.dc_no }} — {{ org.name }}</title>
+<style>
+  @page { size: A4; margin: 1.5cm; }
+  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10px; color: #334155; line-height: 1.5; }
+  .w-100{width:100%} .w-50{width:50%}
+  .text-right{text-align:right} .text-center{text-align:center}
+  .valign-top{vertical-align:top}
+  .header-table{width:100%;margin-bottom:30px}
+  .company-name{font-size:22px;font-weight:bold;color:#0f172a;margin-bottom:4px}
+  .company-meta{font-size:10px;color:#64748b}
+  .dc-title{font-size:24px;font-weight:bold;color:#059669;letter-spacing:1px;text-transform:uppercase}
+  .dc-no{font-size:14px;color:#475569;margin-top:5px}
+  .divider{border-bottom:1px solid #e2e8f0;margin-bottom:25px}
+  .parties-table{width:100%;margin-bottom:35px}
+  .party-cell{width:48%} .party-spacer{width:4%}
+  .party-label{font-size:8px;color:#94a3b8;font-weight:bold;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+  .party-name{font-size:13px;font-weight:bold;color:#1e293b;margin-bottom:4px}
+  .party-meta{font-size:10px;color:#475569}
+  .info-table{width:100%;margin-bottom:20px;border-collapse:collapse}
+  .info-table td{padding:6px 8px;font-size:10px;border:1px solid #e2e8f0}
+  .info-label{color:#64748b;width:30%} .info-val{font-weight:bold;color:#1e293b}
+  .items-table{width:100%;border-collapse:collapse;margin-bottom:25px}
+  .items-table th{border-top:1px solid #0f172a;border-bottom:1px solid #0f172a;color:#0f172a;padding:10px 5px;text-align:left;font-size:9px;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px}
+  .items-table td{padding:12px 5px;font-size:10px;border-bottom:1px solid #f1f5f9;vertical-align:top;color:#334155}
+  .items-table .right{text-align:right}
+  .signature-table{width:100%;margin-top:50px}
+  .sig-box{border-top:1px solid #cbd5e1;display:inline-block;padding-top:8px;min-width:180px;text-align:center;font-size:11px;font-weight:bold;color:#1e293b}
+  .sig-label{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+  .footer-note{margin-top:30px;padding:12px;background:#f8fafc;border-radius:4px;font-size:9px;color:#64748b;text-align:center}
+</style>
+</head>
+<body>
+  <table class="header-table">
+    <tr>
+      <td class="w-50 valign-top">
+        {% if org.logo_url %}<img src="{{ org.logo_url }}" style="max-height:70px;max-width:180px;margin-bottom:12px;">{% endif %}
+        <div class="company-name">{{ org.name }}</div>
+        <div class="company-meta">
+          {% if org.address_line1 %}{{ org.address_line1 }}<br>{% endif %}
+          {% if org.address_line2 %}{{ org.address_line2 }}<br>{% endif %}
+          {{ org.city }}, {{ org.state }} - {{ org.pincode }}<br>
+          {% if org.gstin %}<strong>GSTIN:</strong> {{ org.gstin }}<br>{% endif %}
+          {% if org.phone %}<strong>Phone:</strong> {{ org.phone }}{% endif %}
+        </div>
+      </td>
+      <td class="w-50 valign-top text-right">
+        <div class="dc-title">DELIVERY CHALLAN</div>
+        <div class="dc-no">#{{ dc.dc_no }}</div>
+        <table style="width:100%;margin-top:15px;font-size:10px;">
+          <tr><td class="text-right" style="color:#64748b;padding-bottom:4px;">DC Date:</td><td class="text-right" style="font-weight:bold;color:#1e293b;padding-bottom:4px;padding-left:10px;">{{ dc.dc_date.strftime('%d %b %Y') }}</td></tr>
+          <tr><td class="text-right" style="color:#64748b;padding-bottom:4px;">Type:</td><td class="text-right" style="font-weight:bold;color:#059669;text-transform:capitalize;padding-bottom:4px;padding-left:10px;">{{ dc.dc_type }}</td></tr>
+          <tr><td class="text-right" style="color:#64748b;padding-bottom:4px;">Status:</td><td class="text-right" style="font-weight:bold;color:#0f172a;text-transform:uppercase;padding-bottom:4px;padding-left:10px;">{{ dc.status }}</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  <div class="divider"></div>
+
+  <!-- Consignee / Transport Info -->
+  {% if dc.vehicle_no or dc.driver_name or dc.delivery_address %}
+  <table class="info-table" style="margin-bottom:20px;">
+    <tr>
+      {% if dc.vehicle_no %}<td class="info-label">Vehicle No</td><td class="info-val">{{ dc.vehicle_no }}</td>{% endif %}
+      {% if dc.driver_name %}<td class="info-label">Driver Name</td><td class="info-val">{{ dc.driver_name }}</td>{% endif %}
+    </tr>
+    {% if dc.delivery_address %}
+    <tr><td class="info-label">Delivery Address</td><td class="info-val" colspan="3">{{ dc.delivery_address }}</td></tr>
+    {% endif %}
+  </table>
+  {% endif %}
+
+  <table class="parties-table">
+    <tr>
+      <td class="party-cell valign-top">
+        <div class="party-label">Consignee (Ship To)</div>
+        <div class="party-name">{{ dc.customer.name }}</div>
+        <div class="party-meta">
+          {% if dc.customer.company_name %}{{ dc.customer.company_name }}<br>{% endif %}
+          {% if dc.customer.address %}{{ dc.customer.address }}<br>{% endif %}
+          {% if dc.customer.city %}{{ dc.customer.city }}, {{ dc.customer.state or '' }}<br>{% endif %}
+          {% if dc.customer.gstin %}<strong>GSTIN:</strong> {{ dc.customer.gstin }}<br>{% endif %}
+          {% if dc.customer.phone %}<strong>Phone:</strong> {{ dc.customer.phone }}{% endif %}
+        </div>
+      </td>
+      <td class="party-spacer"></td>
+      <td class="party-cell valign-top">
+        <div class="party-label">Consignor (Shipped From)</div>
+        <div class="party-name">{{ org.name }}</div>
+        <div class="party-meta">
+          {% if org.address_line1 %}{{ org.address_line1 }}<br>{% endif %}
+          {{ org.city }}, {{ org.state }}<br>
+          {% if org.gstin %}<strong>GSTIN:</strong> {{ org.gstin }}{% endif %}
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width:5%;">#</th>
+        <th style="width:40%;">Item &amp; Description</th>
+        <th style="width:12%;">HSN/SAC</th>
+        <th class="right" style="width:12%;">Quantity</th>
+        <th style="width:10%;">Unit</th>
+        <th style="width:21%;">Remarks</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in dc.items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><strong style="color:#0f172a;">{{ item.description }}</strong></td>
+        <td>{{ item.hsn_sac or '-' }}</td>
+        <td class="right"><strong>{{ item.qty }}</strong></td>
+        <td>{{ item.unit or '-' }}</td>
+        <td>{{ item.remarks or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if dc.notes %}
+  <div style="margin-top:15px;font-size:10px;color:#475569;padding:10px;border:1px solid #e2e8f0;border-radius:4px;">
+    <div style="font-size:8px;color:#94a3b8;font-weight:bold;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Notes</div>
+    {{ dc.notes }}
+  </div>
+  {% endif %}
+
+  <table class="signature-table">
+    <tr>
+      <td style="width:50%">
+        <div class="sig-label">Receiver's Signature &amp; Stamp</div>
+        <div class="sig-box" style="min-width:200px;min-height:50px;">&nbsp;</div>
+      </td>
+      <td style="width:50%;text-align:right;">
+        <div class="sig-label">For {{ org.name }}</div>
+        <div class="sig-box">Authorized Signatory</div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="footer-note">
+    This is a computer-generated Delivery Challan and does not require a physical signature.
+    {% if dc.invoice %}Linked Invoice: {{ dc.invoice.invoice_no }}{% endif %}
+  </div>
+</body>
+</html>

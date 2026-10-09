@@ -1,0 +1,370 @@
+{% extends 'base.html' %}
+{% block title %}{{ invoice.invoice_no }}{% endblock %}
+{% block page_title %}Invoice {{ invoice.invoice_no }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ invoice.invoice_no }}</div>
+    <div class="page-subtitle">
+      {{ invoice.customer.name }} · {{ invoice.invoice_date.strftime('%d %b %Y') }}
+    </div>
+  </div>
+  <div class="d-flex gap-8" style="flex-wrap:wrap;">
+    <a href="{{ url_for('invoices.list') }}" class="btn btn-secondary">← Back</a>
+    <a href="{{ url_for('invoices.download_pdf', id=invoice.id, download='1') }}" class="btn btn-outline">⬇️ PDF</a>
+    <a href="{{ url_for('invoices.download_pdf', id=invoice.id) }}" target="_blank" class="btn btn-secondary">🖨️ Print</a>
+
+    {% if invoice.status not in ['paid', 'cancelled'] %}
+    <a href="{{ url_for('invoices.edit', id=invoice.id) }}" class="btn btn-outline" style="color:#f59e0b;border-color:#f59e0b;">✏️ Edit</a>
+    {% endif %}
+
+    {% if invoice.customer.email and invoice.status not in ['cancelled'] %}
+    <form method="POST" action="{{ url_for('invoices.send_email', id=invoice.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-primary">📧 Email</button>
+    </form>
+    {% endif %}
+
+    <!-- WhatsApp Share -->
+    {% if invoice.customer.phone %}
+    <a href="https://wa.me/91{{ invoice.customer.phone | replace(' ','') | replace('-','') | replace('+91','') }}?text={{ ('Invoice ' + invoice.invoice_no + ' from ' + org.name + ' | Amount: ₹' + invoice.grand_total|string + ' | Due: ' + (invoice.due_date.strftime('%d %b %Y') if invoice.due_date else 'N/A') + ' | View: https://billpro-2.onrender.com/invoices/' + invoice.id|string) | urlencode }}" target="_blank" class="btn btn-outline" style="color:#25d366;border-color:#25d366;">
+      💬 WhatsApp
+    </a>
+    {% endif %}
+
+    <!-- Duplicate -->
+    <form method="POST" action="{{ url_for('invoices.duplicate', id=invoice.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-outline" style="color:#6366f1;border-color:#6366f1;" title="Duplicate invoice">📋 Copy</button>
+    </form>
+
+    <!-- Credit Note -->
+    {% if invoice.status in ['sent', 'paid', 'partial'] %}
+    <button class="btn btn-outline" style="color:#f59e0b;border-color:#f59e0b;" onclick="document.getElementById('creditNoteModal').classList.add('active')">📄 Credit Note</button>
+    {% endif %}
+
+    <!-- E-Invoice & E-Way Bill -->
+    {% if invoice.invoice_type == 'tax_invoice' %}
+    <a href="{{ url_for('einvoice.einvoice', id=invoice.id) }}" class="btn btn-outline" style="color:#8b5cf6;border-color:#8b5cf6;" title="Generate E-Invoice (IRP)">
+      {% if invoice.irn %}✅{% else %}🔐{% endif %} E-Invoice
+    </a>
+    <a href="{{ url_for('einvoice.ewaybill', id=invoice.id) }}" class="btn btn-outline" style="color:#06b6d4;border-color:#06b6d4;" title="Generate E-Way Bill">
+      {% if invoice.ewb_no %}✅{% else %}🚚{% endif %} E-Way Bill
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2" style="gap:24px;margin-bottom:24px;align-items:start;">
+  <!-- Invoice Info -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Invoice Details</div>
+      <span class="badge badge-{{ invoice.status }}">{{ invoice.status }}</span>
+    </div>
+    <div class="card-body">
+      <div class="form-row col-2">
+        <div>
+          <div class="form-label">Bill To</div>
+          <div style="font-weight:600;color:var(--text-primary);">{{ invoice.customer.name }}</div>
+          {% if invoice.customer.gstin %}<div class="text-muted" style="font-size:0.82rem;">GSTIN: {{ invoice.customer.gstin }}</div>{% endif %}
+          {% if invoice.customer.billing_address %}<div class="text-muted" style="font-size:0.82rem;">{{ invoice.customer.billing_address }}, {{ invoice.customer.billing_city }}</div>{% endif %}
+          {% if invoice.customer.phone %}<div class="text-muted" style="font-size:0.82rem;">📞 {{ invoice.customer.phone }}</div>{% endif %}
+        </div>
+        <div>
+          <div class="form-row col-1" style="gap:10px;">
+            <div>
+              <div class="form-label">Invoice No</div>
+              <div style="font-weight:600;color:var(--accent);">{{ invoice.invoice_no }}</div>
+            </div>
+            <div>
+              <div class="form-label">Invoice Date</div>
+              <div>{{ invoice.invoice_date.strftime('%d %b %Y') }}</div>
+            </div>
+            <div>
+              <div class="form-label">Due Date</div>
+              <div style="{{ 'color:var(--danger);' if invoice.due_date and invoice.due_date < today else '' }}">
+                {{ invoice.due_date.strftime('%d %b %Y') if invoice.due_date else '—' }}
+              </div>
+            </div>
+            <div>
+              <div class="form-label">Type</div>
+              <div>{{ 'Tax Invoice' if invoice.invoice_type == 'tax_invoice' else 'Proforma Invoice' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Amount Summary -->
+  <div class="card">
+    <div class="card-header"><div class="card-title">Payment Summary</div></div>
+    <div class="card-body">
+      <div class="total-row">
+        <span class="total-label">Grand Total</span>
+        <span class="total-value amt fw-700" style="font-size:1.2rem;color:var(--accent);">{{ format_currency(invoice.grand_total) }}</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Amount Paid</span>
+        <span class="total-value amt" style="color:var(--success);">{{ format_currency(invoice.amount_paid) }}</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Balance Due</span>
+        <span class="total-value amt fw-700" style="color:{{ 'var(--danger)' if invoice.balance_due > 0 else 'var(--success)' }};">{{ format_currency(invoice.balance_due) }}</span>
+      </div>
+
+      <!-- Status actions -->
+      {% if invoice.status not in ['paid', 'cancelled'] %}
+      <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <div class="form-label" style="margin-bottom:8px;">Quick Actions</div>
+        <div class="d-flex gap-8" style="flex-wrap:wrap;">
+          {% if invoice.status == 'draft' %}
+          <form method="POST" action="{{ url_for('invoices.update_status', id=invoice.id) }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="status" value="sent">
+            <button class="btn btn-success btn-sm">✅ Mark as Sent</button>
+          </form>
+          {% endif %}
+          <button class="btn btn-primary btn-sm" onclick="document.getElementById('paymentModal').classList.add('active')">
+            💳 Record Payment
+          </button>
+          <form method="POST" action="{{ url_for('invoices.update_status', id=invoice.id) }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="status" value="cancelled">
+            <button class="btn btn-danger btn-sm" data-confirm="Cancel this invoice?">❌ Cancel</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Line Items -->
+<div class="card mb-16">
+  <div class="card-header"><div class="card-title">Line Items</div></div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Description</th>
+          <th>HSN/SAC</th>
+          <th class="text-right">Qty</th>
+          <th>Unit</th>
+          <th class="text-right">Rate</th>
+          <th class="text-right">Disc%</th>
+          <th class="text-right">Taxable</th>
+          <th class="text-right">GST%</th>
+          {% if invoice.is_igst %}
+          <th class="text-right">IGST</th>
+          {% else %}
+          <th class="text-right">CGST</th>
+          <th class="text-right">SGST</th>
+          {% endif %}
+          <th class="text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in invoice.items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="fw">{{ item.description }}</td>
+          <td>{{ item.hsn_sac or '—' }}</td>
+          <td class="text-right">{{ item.qty }}</td>
+          <td>{{ item.unit or '—' }}</td>
+          <td class="text-right amt">{{ format_currency(item.rate) }}</td>
+          <td class="text-right">{{ item.discount_pct }}%</td>
+          <td class="text-right amt">{{ format_currency(item.taxable_amount) }}</td>
+          <td class="text-right">{{ item.gst_rate }}%</td>
+          {% if invoice.is_igst %}
+          <td class="text-right amt">{{ format_currency(item.igst_amount) }}</td>
+          {% else %}
+          <td class="text-right amt">{{ format_currency(item.cgst_amount) }}</td>
+          <td class="text-right amt">{{ format_currency(item.sgst_amount) }}</td>
+          {% endif %}
+          <td class="text-right amt fw">
+            {{ format_currency(item.taxable_amount|float + item.cgst_amount|float + item.sgst_amount|float + item.igst_amount|float) }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--bg-secondary);">
+          <td colspan="{{ 9 if invoice.is_igst else 10 }}" class="text-right fw-600">Subtotal</td>
+          <td class="text-right amt fw-600">{{ format_currency(invoice.subtotal) }}</td>
+        </tr>
+        {% if not invoice.is_igst %}
+        <tr>
+          <td colspan="10" class="text-right">CGST</td>
+          <td class="text-right amt">{{ format_currency(invoice.cgst_amount) }}</td>
+        </tr>
+        <tr>
+          <td colspan="10" class="text-right">SGST</td>
+          <td class="text-right amt">{{ format_currency(invoice.sgst_amount) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" class="text-right">IGST</td>
+          <td class="text-right amt">{{ format_currency(invoice.igst_amount) }}</td>
+        </tr>
+        {% endif %}
+        {% if invoice.tds_applicable and invoice.tds_amount %}
+        <tr style="color:#f59e0b;">
+          <td colspan="{{ 9 if invoice.is_igst else 10 }}" class="text-right">TDS ({{ invoice.tds_section }} @ {{ invoice.tds_rate }}%)</td>
+          <td class="text-right amt">- {{ format_currency(invoice.tds_amount) }}</td>
+        </tr>
+        {% endif %}
+        <tr style="background:var(--accent-glow);">
+          <td colspan="{{ 9 if invoice.is_igst else 10 }}" class="text-right fw-700" style="color:var(--accent);">Grand Total</td>
+          <td class="text-right amt fw-700" style="color:var(--accent);font-size:1rem;">{{ format_currency(invoice.grand_total) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- E-Invoice IRN Banner -->
+{% if invoice.irn %}
+<div class="card mb-16" style="border:1px solid rgba(99,102,241,0.4);background:rgba(99,102,241,0.05);">
+  <div class="card-body" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div style="font-size:1.5rem;">✅</div>
+    <div style="flex:1;">
+      <div style="font-weight:700;color:var(--accent);">E-Invoice Generated (IRN)</div>
+      <div style="font-size:0.82rem;color:var(--text-muted);word-break:break-all;">IRN: {{ invoice.irn }}</div>
+      {% if invoice.ack_no %}<div style="font-size:0.82rem;color:var(--text-muted);">ACK No: {{ invoice.ack_no }} | ACK Date: {{ invoice.ack_date.strftime('%d %b %Y %H:%M') if invoice.ack_date else '' }}</div>{% endif %}
+      {% if invoice.ewb_no %}<div style="font-size:0.82rem;color:#10b981;">E-Way Bill: {{ invoice.ewb_no }}</div>{% endif %}
+    </div>
+    {% if invoice.qr_code_data %}
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ invoice.qr_code_data | urlencode }}" width="80" height="80" alt="IRN QR">
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Payment History -->
+{% if invoice.payments.count() > 0 %}
+<div class="card mb-16">
+  <div class="card-header"><div class="card-title">Payment History</div></div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Mode</th><th>Reference</th><th class="text-right">Amount</th></tr>
+      </thead>
+      <tbody>
+        {% for p in invoice.payments %}
+        <tr>
+          <td>{{ p.payment_date.strftime('%d %b %Y') }}</td>
+          <td><span class="badge badge-info">{{ p.payment_mode | upper }}</span></td>
+          <td>{{ p.reference_no or '—' }}</td>
+          <td class="text-right amt fw" style="color:var(--success);">{{ format_currency(p.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Credit Note Modal -->
+<div class="modal-overlay" id="creditNoteModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <div class="modal-title">📄 Issue Credit Note</div>
+      <button class="modal-close" onclick="document.getElementById('creditNoteModal').classList.remove('active')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('invoices.credit_note', id=invoice.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Reason for Credit Note <span class="required">*</span></label>
+          <select name="reason" class="form-control">
+            <option value="Goods returned">Goods Returned</option>
+            <option value="Excess billing">Excess Billing</option>
+            <option value="Order cancelled">Order Cancelled</option>
+            <option value="Quality issue">Quality Issue</option>
+            <option value="Discount applied post invoice">Discount Applied Post Invoice</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="alert" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:12px;font-size:0.85rem;color:var(--warning,#f59e0b);">
+          ⚠️ This will create a new Credit Note (CN-{{ invoice.invoice_no }}) with the same items as this invoice.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('creditNoteModal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn btn-warning" style="background:#f59e0b;color:#fff;border-color:#f59e0b;">📄 Issue Credit Note</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+{% set today = today if today is defined else '' %}
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">💳 Record Payment</div>
+      <button class="modal-close" onclick="document.getElementById('paymentModal').classList.remove('active')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('invoices.record_payment', id=invoice.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Amount <span class="required">*</span></label>
+          <input type="number" name="amount" class="form-control" step="0.01"
+                 value="{{ invoice.balance_due }}" max="{{ invoice.balance_due }}" required>
+          <div class="form-help">Balance due: {{ format_currency(invoice.balance_due) }}</div>
+        </div>
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Payment Date</label>
+            <input type="date" name="payment_date" class="form-control"
+                   value="{{ today.isoformat() }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Mode</label>
+            <select name="payment_mode" class="form-control">
+              <option value="cash">Cash</option>
+              <option value="bank">Bank Transfer</option>
+              <option value="upi">UPI</option>
+              <option value="cheque">Cheque</option>
+              <option value="neft">NEFT/RTGS</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reference / Transaction No</label>
+          <input type="text" name="reference_no" class="form-control" placeholder="UTR, Cheque no, etc.">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('paymentModal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn btn-success">💾 Save Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Set today's date in payment modal
+document.querySelector('[name=payment_date]').value = new Date().toISOString().split('T')[0];
+
+function printPage() {
+  const org = {
+    name: "{{ org.name | e }}",
+    gstin: "{{ org.gstin or '' | e }}",
+    address: "{{ (org.address_line1 or '') | e }}{% if org.address_line2 %}, {{ org.address_line2 | e }}{% endif %}",
+    city: "{{ org.city or '' | e }}",
+    state: "{{ org.state or '' | e }}",
+    pincode: "{{ org.pincode or '' | e }}",
+    phone: "{{ org.phone or '' | e }}",
+    email: "{{ org.email or '' | e }}",
+    bank_name: "{{ org.bank_name or '' | e }}",
+    bank_account_no: "{{ org.bank_account_no or '' | e }}",
+    bank_ifsc: "{{ org.bank_ifsc or '' | e }}",
+    bank_branch: "{{ org.bank_branch or '' | e }}",
+</script>
+{% endblock %}

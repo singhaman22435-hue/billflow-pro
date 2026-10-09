@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% block title %}E-Invoice — {{ invoice.invoice_no }}{% endblock %}
+{% block page_title %}E-Invoice{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">E-Invoice Portal</div>
+    <div class="page-subtitle">{{ invoice.invoice_no }} · {{ invoice.customer.name }}</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('invoices.view', id=invoice.id) }}" class="btn btn-secondary">← Back to Invoice</a>
+    <a href="{{ url_for('einvoice.ewaybill', id=invoice.id) }}" class="btn btn-outline">🚚 E-Way Bill</a>
+  </div>
+</div>
+
+{% if invoice.irn %}
+<div class="card" style="border:1px solid var(--success);background:rgba(16,185,129,0.05);margin-bottom:20px;">
+  <div class="card-body">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <span style="font-size:2rem;">✅</span>
+      <div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--success);">E-Invoice Registered</div>
+        <div class="text-muted" style="font-size:0.85rem;">IRN has been generated for this invoice</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;">
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;">IRN (Invoice Reference Number)</div>
+        <div style="font-family:monospace;font-size:0.85rem;word-break:break-all;color:var(--accent);margin-top:4px;">{{ invoice.irn }}</div>
+      </div>
+      {% if invoice.ack_no %}
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;">Acknowledgement Number</div>
+        <div style="font-family:monospace;font-size:0.9rem;color:var(--text);margin-top:4px;">{{ invoice.ack_no }}</div>
+      </div>
+      {% endif %}
+      {% if invoice.ack_date %}
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;">Acknowledgement Date</div>
+        <div style="font-size:0.9rem;color:var(--text);margin-top:4px;">{{ invoice.ack_date.strftime('%d %b %Y %H:%M') }}</div>
+      </div>
+      {% endif %}
+    </div>
+    <div class="d-flex gap-8 mt-16">
+      <form method="POST" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="cancel_irn">
+        <button class="btn btn-sm btn-danger" data-confirm="Clear IRN? This will remove the e-invoice registration data.">🗑️ Clear IRN</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="grid-2" style="gap:20px;">
+  <!-- Step 1: Download JSON -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📥 Step 1: Download E-Invoice JSON</div>
+    </div>
+    <div class="card-body">
+      <p class="text-muted" style="font-size:0.9rem;margin-bottom:16px;">
+        Download the NIC-compliant E-Invoice JSON for <strong>{{ invoice.invoice_no }}</strong>. 
+        Upload this on the <strong>IRP Portal</strong> (einvoice1.gst.gov.in) or your GSP to get the IRN.
+      </p>
+      <div style="background:var(--bg-secondary);border-radius:8px;padding:12px;margin-bottom:16px;">
+        <div style="font-size:0.78rem;color:var(--accent);font-weight:600;margin-bottom:8px;">INVOICE SUMMARY</div>
+        <div class="total-row"><span class="total-label">Invoice No</span><span class="fw-600">{{ invoice.invoice_no }}</span></div>
+        <div class="total-row"><span class="total-label">Seller GSTIN</span><span>{{ org.gstin or '⚠️ Not set in Settings' }}</span></div>
+        <div class="total-row"><span class="total-label">Buyer GSTIN</span><span>{{ invoice.customer.gstin or 'URP (Unregistered)' }}</span></div>
+        <div class="total-row"><span class="total-label">Taxable Amount</span><span class="amt">{{ format_currency(invoice.taxable_amount) }}</span></div>
+        <div class="total-row"><span class="total-label">Grand Total</span><span class="amt fw-700" style="color:var(--accent);">{{ format_currency(invoice.grand_total) }}</span></div>
+      </div>
+      {% if not org.gstin %}
+      <div class="alert alert-warning" style="padding:10px 14px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;color:#f59e0b;font-size:0.85rem;margin-bottom:12px;">
+        ⚠️ Your GSTIN is not set. Go to <a href="{{ url_for('settings.index') }}" style="color:#f59e0b;text-decoration:underline;">Settings</a> to add it before generating E-Invoice.
+      </div>
+      {% endif %}
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="download_json">
+        <button type="submit" class="btn btn-primary w-100">📥 Download E-Invoice JSON</button>
+      </form>
+      <div style="margin-top:12px;text-align:center;">
+        <a href="https://einvoice1.gst.gov.in" target="_blank" style="font-size:0.82rem;color:var(--accent);">🔗 Open IRP Portal →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Enter IRN -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">✏️ Step 2: Enter IRN after Registration</div>
+    </div>
+    <div class="card-body">
+      <p class="text-muted" style="font-size:0.9rem;margin-bottom:16px;">
+        After uploading JSON to the IRP portal, enter the IRN and Acknowledgement details here to update the invoice.
+      </p>
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="save_irn">
+        <div class="form-group">
+          <label class="form-label">IRN (Invoice Reference Number) <span class="required">*</span></label>
+          <input type="text" name="irn" class="form-control" 
+                 value="{{ invoice.irn or '' }}" 
+                 placeholder="64-char hash e.g. dc9c02e67d1c4d3b5..." 
+                 style="font-family:monospace;font-size:0.82rem;" required>
+          <div class="form-hint">64-character hash generated by IRP portal</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Acknowledgement Number</label>
+          <input type="text" name="ack_no" class="form-control" value="{{ invoice.ack_no or '' }}" placeholder="e.g. 122405212345678">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Acknowledgement Date & Time</label>
+          <input type="datetime-local" name="ack_date" class="form-control" 
+                 value="{{ invoice.ack_date.strftime('%Y-%m-%dT%H:%M') if invoice.ack_date else '' }}">
+        </div>
+        <button type="submit" class="btn btn-success w-100">💾 Save IRN & Activate E-Invoice</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- JSON Preview -->
+<div class="card mt-20">
+  <div class="card-header">
+    <div class="card-title">📋 E-Invoice JSON Preview</div>
+    <div class="text-muted" style="font-size:0.82rem;">NIC Schema v1.1 — as per GST E-Invoice standard</div>
+  </div>
+  <div class="card-body" style="padding:0;">
+    <pre style="background:#0a0a14;color:#a0e878;padding:20px;border-radius:0 0 12px 12px;font-size:0.78rem;overflow-x:auto;max-height:400px;overflow-y:auto;margin:0;">{{ einv_json }}</pre>
+  </div>
+</div>
+
+<div class="card mt-20" style="border:1px solid rgba(99,102,241,0.3);">
+  <div class="card-body">
+    <div style="font-weight:700;margin-bottom:8px;">📌 E-Invoice Requirement</div>
+    <div class="text-muted" style="font-size:0.88rem;line-height:1.7;">
+      E-Invoicing is <strong>mandatory</strong> for businesses with annual turnover above ₹5 Crore.<br>
+      For integration via GSP (like Karvy, EY, IRIS), use the JSON downloaded above.<br>
+      Direct API integration requires GSP credentials from NIC (einvoice1.gst.gov.in).
+    </div>
+  </div>
+</div>
+{% endblock %}

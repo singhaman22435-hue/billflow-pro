@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}BillFlow Pro{% endblock %} — GST Billing Software</title>
+  <meta name="description" content="{% block meta_desc %}Professional GST billing and invoicing software for Indian businesses{% endblock %}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.1">
+
+  <!-- ── PWA & App Meta ────────────────────────────── -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#6366f1">
+
+  <!-- Standard Favicon -->
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='images/icon-192.png') }}">
+  <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='images/icon-512.png') }}">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='images/icon-192.png') }}">
+
+  <!-- 🍎 Apple iPhone & iPad (iOS Safari) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BillFlow Pro">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/icon-512.png') }}">
+  <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='images/icon-512.png') }}">
+  <link rel="apple-touch-icon" sizes="167x167" href="{{ url_for('static', filename='images/icon-512.png') }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='images/icon-512.png') }}">
+  <!-- iOS Splash Screen -->
+  <meta name="apple-touch-fullscreen" content="yes">
+
+  <!-- 🪟 Windows (Microsoft Tile) -->
+  <meta name="msapplication-TileColor" content="#6366f1">
+  <meta name="msapplication-TileImage" content="{{ url_for('static', filename='images/icon-512.png') }}">
+  <meta name="msapplication-config" content="none">
+  <meta name="msapplication-tap-highlight" content="no">
+
+  <!-- 🤖 Android & Chrome -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="BillFlow Pro">
+
+  <!-- 📱 General Mobile -->
+  <meta name="format-detection" content="telephone=no">
+  <meta name="HandheldFriendly" content="true">
+  <meta name="MobileOptimized" content="width">
+
+  <!-- Apply saved theme BEFORE render to avoid flash -->
+  <script>
+    (function(){
+      var t = localStorage.getItem('billflow_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+
+{% if current_user.is_authenticated %}
+<div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">💼</div>
+      <div>
+        <div class="logo-text">BillFlow <span>Pro</span></div>
+      </div>
+    </div>
+
+    <div class="sidebar-org">
+      <span class="org-name">{{ current_user.organization.name }}</span>
+      <span>{{ current_user.role | capitalize }}</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <a href="{{ url_for('dashboard.index') }}" class="nav-item {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+
+      <div class="nav-section-label">Sales</div>
+      <a href="{{ url_for('invoices.list') }}" class="nav-item {% if 'invoices' in (request.endpoint or '') and 'recurring' not in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">🧾</span> Invoices
+      </a>
+      <a href="{{ url_for('recurring.list') }}" class="nav-item {% if 'recurring' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">🔄</span> Recurring
+      </a>
+      <a href="{{ url_for('quotations.list') }}" class="nav-item {% if 'quotations' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">📋</span> Quotations
+      </a>
+
+      <div class="nav-section-label">Purchases</div>
+      <a href="{{ url_for('purchase_orders.list') }}" class="nav-item {% if 'purchase_orders' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">📦</span> Purchase Orders
+      </a>
+      <a href="{{ url_for('expenses.list') }}" class="nav-item {% if 'expenses' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">💸</span> Expenses
+      </a>
+      <a href="{{ url_for('delivery_challans.list') }}" class="nav-item {% if 'delivery_challans' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">🚚</span> Delivery Challans
+      </a>
+      <a href="{{ url_for('inventory.index') }}" class="nav-item {% if 'inventory' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">📊</span> Inventory
+      </a>
+      <a href="{{ url_for('payroll.employees') }}" class="nav-item {% if 'payroll' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">👔</span> Payroll
+      </a>
+      <a href="{{ url_for('bank_recon.index') }}" class="nav-item {% if 'bank_recon' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">🏦</span> Bank Recon
+      </a>
+
+      <div class="nav-section-label">Masters</div>
+      <a href="{{ url_for('customers.list') }}" class="nav-item {% if 'customers' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">👥</span> Customers
+      </a>
+      <a href="{{ url_for('vendors.list') }}" class="nav-item {% if 'vendors' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">🏭</span> Vendors
+      </a>
+      <a href="{{ url_for('items.list') }}" class="nav-item {% if 'items' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">📦</span> Items / Products
+      </a>
+
+      {% if current_user.can('reports') %}
+      <div class="nav-section-label">Reports</div>
+      <a href="{{ url_for('reports.pnl') }}" class="nav-item {% if request.endpoint in ['reports.pnl'] %}active{% endif %}">
+        <span class="nav-icon">📊</span> P&L Statement
+      </a>
+      <a href="{{ url_for('reports.cashbook') }}" class="nav-item {% if request.endpoint in ['reports.cashbook'] %}active{% endif %}">
+        <span class="nav-icon">📒</span> Cash Book
+      </a>
+      <a href="{{ url_for('reports.outstanding') }}" class="nav-item {% if request.endpoint == 'reports.outstanding' %}active{% endif %}">
+        <span class="nav-icon">⏳</span> Invoice Aging
+      </a>
+      <a href="{{ url_for('reports.gstr3b') }}" class="nav-item {% if request.endpoint == 'reports.gstr3b' %}active{% endif %}">
+        <span class="nav-icon">🏛️</span> GSTR-3B
+      </a>
+      <a href="{{ url_for('reports.sales') }}" class="nav-item {% if request.endpoint in ['reports.sales','reports.outstanding','reports.purchase','reports.gstr1'] %}active{% endif %}">
+        <span class="nav-icon">📋</span> All Reports
+      </a>
+      {% endif %}
+
+      {% if current_user.can('settings') %}
+      <div class="nav-section-label">Settings</div>
+      <a href="{{ url_for('settings.company') }}" class="nav-item {% if request.endpoint == 'settings.company' %}active{% endif %}">
+        <span class="nav-icon">⚙️</span> Company Settings
+      </a>
+      <a href="{{ url_for('settings.staff') }}" class="nav-item {% if 'settings.staff' in (request.endpoint or '') or 'invite_staff' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">👥</span> Staff & Access
+      </a>
+      <a href="{{ url_for('settings.audit_log') }}" class="nav-item {% if request.endpoint == 'settings.audit_log' %}active{% endif %}">
+        <span class="nav-icon">🔐</span> Audit Log
+      </a>
+      {% endif %}
+
+      {% if current_user.is_super_admin %}
+      <div class="nav-section-label" style="color:var(--danger);margin-top:20px;">Super Admin</div>
+      <a href="{{ url_for('admin.dashboard') }}" class="nav-item {% if 'admin.dashboard' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">🛡️</span> SaaS Dashboard
+      </a>
+      <a href="{{ url_for('admin.organizations') }}" class="nav-item {% if 'admin.organizations' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">🏢</span> Organizations
+      </a>
+      <a href="{{ url_for('admin.users') }}" class="nav-item {% if 'admin.users' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">👥</span> All Users
+      </a>
+      <a href="{{ url_for('admin.subscriptions') }}" class="nav-item {% if 'admin.subscriptions' in (request.endpoint or '') %}active{% endif %}">
+        <span class="nav-icon">💳</span> Subscriptions
+      </a>
+      {% endif %}
+    </nav>
+
+    <div style="padding: 16px; margin: 16px; border-radius: var(--radius-sm); background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);">
+      <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; text-transform: uppercase;">Current Plan</div>
+      <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; text-transform: capitalize;">{{ current_user.organization.plan }}</div>
+      {% if current_user.organization.plan != 'pro' %}
+      <a href="{{ url_for('subscription.pricing') }}" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center;">⭐ Upgrade</a>
+      {% endif %}
+    </div>
+
+
+    <div class="sidebar-footer">
+      <!-- Install App Button -->
+      <div id="installAppContainer" style="display:none;padding:0 16px 12px;">
+        <button id="installAppBtn" class="btn btn-outline" style="width:100%;justify-content:center;gap:8px;font-size:0.82rem;border-color:rgba(99,102,241,0.4);color:var(--accent);">
+          📲 Install App
+        </button>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="nav-item" style="color: var(--danger);">
+        <span class="nav-icon">🚪</span> Logout
+      </a>
+    </div>
+  </aside>
+
+  <!-- HEADER -->
+  <header class="header">
+    <button class="btn btn-icon btn-secondary" id="sidebarToggle" title="Toggle Sidebar">☰</button>
+    <div>
+      <div class="header-title">{% block page_title %}Dashboard{% endblock %}</div>
+    </div>
+    <div class="header-right">
+      <!-- Theme Toggle -->
+      <button id="themeToggle" class="btn btn-icon btn-secondary" title="Toggle Light/Dark" style="font-size:1.1rem;">
+        🌙
+      </button>
+      <a href="{{ url_for('invoices.create') }}" class="btn btn-primary btn-sm">
+        + New Invoice
+      </a>
+      <div class="header-avatar" tabindex="0">
+        {{ current_user.name[0].upper() }}
+        <div class="dropdown-menu">
+          <a href="{{ url_for('settings.company') }}">⚙️ Settings</a>
+          <div class="dropdown-divider"></div>
+          <a href="{{ url_for('auth.logout') }}" style="color: var(--danger);">🚪 Logout</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main-content">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container" id="flashContainer">
+      {% for cat, msg in messages %}
+      <div class="alert alert-{{ 'danger' if cat == 'error' else cat }}">
+        <span>{{ '✅' if cat == 'success' else ('⚠️' if cat == 'warning' else ('ℹ️' if cat == 'info' else '❌')) }}</span>
+        {{ msg }}
+        <button class="alert-close" onclick="this.parentElement.remove()">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+</div>
+
+{% else %}
+<!-- Non-authenticated pages -->
+<div class="flash-container" id="flashContainer">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div class="alert alert-{{ 'danger' if cat == 'error' else cat }}">
+    {{ msg }}
+    <button class="alert-close" onclick="this.parentElement.remove()">✕</button>
+  </div>
+  {% endfor %}
+  {% endwith %}
+</div>
+{% block auth_content %}{% endblock %}
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+// ─── Theme Toggle ────────────────────────────────────
+const toggleBtn = document.getElementById('themeToggle');
+const root = document.getElementById('htmlRoot') || document.documentElement;
+
+function applyTheme(theme) {
+  root.setAttribute('data-theme', theme);
+  localStorage.setItem('billflow_theme', theme);
+  if (toggleBtn) {
+    toggleBtn.innerHTML = theme === 'dark' ? '🌙' : '☀️';
+    toggleBtn.title = theme === 'dark' ? 'Switch to Light' : 'Switch to Dark';
+  }
+}
+
+// Init from storage
+applyTheme(localStorage.getItem('billflow_theme') || 'dark');
+
+if (toggleBtn) {
+  toggleBtn.addEventListener('click', () => {
+    const current = root.getAttribute('data-theme') || 'dark';
+    applyTheme(current === 'dark' ? 'light' : 'dark');
+  });
+}
+
+// ─── PWA Service Worker + Install Prompt ─────────────
+let deferredPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  const container = document.getElementById('installAppContainer');
+  if (container) container.style.display = 'block';
+});
+
+const installBtn = document.getElementById('installAppBtn');
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    if (outcome === 'accepted') {
+      document.getElementById('installAppContainer').style.display = 'none';
+    }
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  const container = document.getElementById('installAppContainer');
+  if (container) container.style.display = 'none';
+});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

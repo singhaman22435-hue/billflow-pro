@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Invoices — {{ org.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Inter',sans-serif;background:#0f1117;color:#e5e7eb;min-height:100vh;}
+    .header{background:linear-gradient(135deg,#1e1b4b,#312e81);padding:24px 32px;display:flex;align-items:center;gap:16px;}
+    .header-logo{width:48px;height:48px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;}
+    .header-title{font-size:1.3rem;font-weight:800;color:#e0e7ff;}
+    .header-sub{font-size:0.82rem;color:#a5b4fc;}
+    .container{max-width:900px;margin:32px auto;padding:0 24px;}
+    .customer-card{background:#1e2235;border:1px solid #374151;border-radius:16px;padding:24px;margin-bottom:24px;}
+    .customer-name{font-size:1.4rem;font-weight:700;color:#e0e7ff;margin-bottom:4px;}
+    .customer-meta{font-size:0.85rem;color:#9ca3af;}
+    .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;}
+    .stat-box{background:#12151f;border:1px solid #374151;border-radius:10px;padding:14px;text-align:center;}
+    .stat-val{font-size:1.2rem;font-weight:700;}
+    .stat-lbl{font-size:0.75rem;color:#9ca3af;margin-top:2px;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#1e2235;color:#9ca3af;font-size:0.78rem;text-transform:uppercase;padding:10px 12px;border-bottom:1px solid #374151;text-align:left;}
+    td{padding:12px;border-bottom:1px solid #1f2937;font-size:0.88rem;}
+    tr:hover{background:rgba(99,102,241,0.04);}
+    .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;}
+    .paid{background:rgba(16,185,129,0.2);color:#10b981;}
+    .sent{background:rgba(245,158,11,0.2);color:#f59e0b;}
+    .partial{background:rgba(249,115,22,0.2);color:#f97316;}
+    .text-right{text-align:right;}
+    .section-title{font-size:1rem;font-weight:700;color:#e0e7ff;margin-bottom:16px;}
+    a.inv-link{color:#6366f1;text-decoration:none;font-weight:600;}
+    a.inv-link:hover{text-decoration:underline;}
+    .footer{text-align:center;padding:32px;color:#4b5563;font-size:0.8rem;}
+  </style>
+</head>
+<body>
+<div class="header">
+  {% if org.logo_url %}
+  <img src="{{ org.logo_url }}" style="height:48px;border-radius:8px;" alt="logo">
+  {% else %}
+  <div class="header-logo">💼</div>
+  {% endif %}
+  <div>
+    <div class="header-title">{{ org.name }}</div>
+    <div class="header-sub">Customer Invoice Portal</div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="customer-card">
+    <div class="customer-name">{{ customer.name }}</div>
+    <div class="customer-meta">
+      {% if customer.company_name %}{{ customer.company_name }} • {% endif %}
+      {% if customer.email %}{{ customer.email }} • {% endif %}
+      {% if customer.gstin %}GSTIN: {{ customer.gstin }}{% endif %}
+    </div>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-val" style="color:#6366f1;">{{ invoices|length }}</div>
+        <div class="stat-lbl">Total Invoices</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" style="color:#f59e0b;">₹{{ '{:,.0f}'.format(outstanding) }}</div>
+        <div class="stat-lbl">Outstanding</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" style="color:#10b981;">₹{{ '{:,.0f}'.format(total_paid) }}</div>
+        <div class="stat-lbl">Total Paid</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Your Invoices</div>
+  <div style="background:#1e2235;border:1px solid #374151;border-radius:16px;overflow:hidden;">
+    {% if invoices %}
+    <table>
+      <thead>
+        <tr>
+          <th>Invoice No</th><th>Date</th><th>Due Date</th>
+          <th class="text-right">Amount</th><th class="text-right">Balance</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr>
+          <td><span class="inv-link">{{ inv.invoice_no }}</span></td>
+          <td>{{ inv.invoice_date.strftime('%d %b %Y') }}</td>
+          <td>{{ inv.due_date.strftime('%d %b %Y') if inv.due_date else '—' }}</td>
+          <td class="text-right">₹{{ '{:,.2f}'.format(inv.grand_total|float) }}</td>
+          <td class="text-right" style="{% if inv.balance_due|float > 0 %}color:#f59e0b;font-weight:700;{% else %}color:#10b981;{% endif %}">
+            ₹{{ '{:,.2f}'.format(inv.balance_due|float) }}
+          </td>
+          <td>
+            <span class="badge {{ inv.status }}">{{ inv.status | title }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div style="text-align:center;padding:48px;color:#6b7280;">No invoices found.</div>
+    {% endif %}
+  </div>
+
+  {% if outstanding > 0 %}
+  <div style="margin-top:20px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:16px;text-align:center;">
+    <div style="font-size:0.9rem;color:#f59e0b;margin-bottom:8px;">Total Amount Outstanding</div>
+    <div style="font-size:2rem;font-weight:900;color:#f59e0b;">₹{{ '{:,.2f}'.format(outstanding) }}</div>
+    {% if org.upi_id %}
+    <div style="margin-top:12px;">
+      <div style="font-size:0.82rem;color:#9ca3af;margin-bottom:8px;">Pay via UPI</div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=upi://pay?pa={{ org.upi_id }}&pn={{ org.name | urlencode }}&cu=INR" width="120" height="120" style="border-radius:8px;background:white;padding:4px;" alt="UPI QR">
+      <div style="font-size:0.8rem;color:#9ca3af;margin-top:4px;">{{ org.upi_id }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="footer">
+  Powered by BillFlow Pro • {{ org.name }}{% if org.phone %} • {{ org.phone }}{% endif %}
+</div>
+</body>
+</html>

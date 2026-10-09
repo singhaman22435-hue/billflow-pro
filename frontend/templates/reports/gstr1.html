@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}GSTR-1 Summary{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">GSTR-1 Summary</div></div>
+</div>
+
+<div class="tabs mb-16">
+  <a href="{{ url_for('reports.sales') }}" class="tab-item">Sales Register</a>
+  <a href="{{ url_for('reports.outstanding') }}" class="tab-item">Outstanding</a>
+  <a href="{{ url_for('reports.purchase') }}" class="tab-item">Purchase Register</a>
+  <a href="{{ url_for('reports.gstr1') }}" class="tab-item active">GSTR-1</a>
+</div>
+
+<div class="card mb-16">
+  <div class="card-body">
+    <form method="GET" class="d-flex gap-12 align-center">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Month</label>
+        <input type="month" name="month" class="form-control" value="{{ month }}">
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top:18px;">Generate</button>
+    </form>
+  </div>
+</div>
+
+<div class="grid-2" style="gap:20px;">
+  <!-- B2B -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">B2B Invoices (Registered Parties)</div>
+      <span class="badge badge-info">{{ b2b|length }}</span>
+    </div>
+    <div class="table-wrapper" style="border:none;">
+      <table>
+        <thead>
+          <tr><th>Invoice</th><th>Party</th><th>GSTIN</th><th class="text-right">Taxable</th><th class="text-right">Total Tax</th></tr>
+        </thead>
+        <tbody>
+          {% for inv in b2b %}
+          <tr>
+            <td class="fw">{{ inv.invoice_no }}</td>
+            <td>{{ inv.customer.name }}</td>
+            <td style="font-size:0.78rem;">{{ inv.customer.gstin }}</td>
+            <td class="text-right amt">{{ format_currency(inv.taxable_amount) }}</td>
+            <td class="text-right amt">{{ format_currency(inv.cgst_amount|float + inv.sgst_amount|float + inv.igst_amount|float) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-center text-muted" style="padding:20px;">No B2B invoices</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- B2C -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">B2C Invoices (Unregistered Parties)</div>
+      <span class="badge badge-warning">{{ b2c|length }}</span>
+    </div>
+    <div class="table-wrapper" style="border:none;">
+      <table>
+        <thead>
+          <tr><th>Invoice</th><th>Party</th><th class="text-right">Taxable</th><th class="text-right">Total Tax</th></tr>
+        </thead>
+        <tbody>
+          {% for inv in b2c %}
+          <tr>
+            <td class="fw">{{ inv.invoice_no }}</td>
+            <td>{{ inv.customer.name }}</td>
+            <td class="text-right amt">{{ format_currency(inv.taxable_amount) }}</td>
+            <td class="text-right amt">{{ format_currency(inv.cgst_amount|float + inv.sgst_amount|float + inv.igst_amount|float) }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="text-center text-muted" style="padding:20px;">No B2C invoices</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

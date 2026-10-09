@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}Items{% endblock %}
+{% block page_title %}Items / Products{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Items & Products</div>
+    <div class="page-subtitle">{{ items|length }} items in catalog</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('items.list', export='csv', q=search) }}" class="btn btn-outline" style="color:#10b981;border-color:#10b981;">📊 Export CSV</a>
+    <button type="button" class="btn btn-secondary" onclick="document.getElementById('importModal').classList.add('active')">📥 Import</button>
+    <a href="{{ url_for('items.add') }}" class="btn btn-primary">+ Add Item</a>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <form class="search-bar" style="flex:1;max-width:320px;" method="GET">
+    <span class="search-icon">🔍</span>
+    <input type="text" name="q" value="{{ search }}" placeholder="Search items...">
+  </form>
+</div>
+
+{% if items %}
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>HSN/SAC</th>
+        <th>Unit</th>
+        <th class="text-right">Selling Price</th>
+        <th class="text-right">Purchase Price</th>
+        <th class="text-right">GST %</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td class="fw">{{ item.name }}
+          {% if item.description %}<div style="font-size:0.78rem;color:var(--text-muted);">{{ item.description[:60] }}...</div>{% endif %}
+        </td>
+        <td><span class="badge badge-{{ 'info' if item.item_type == 'goods' else 'success' }}">{{ item.item_type }}</span></td>
+        <td>{{ item.hsn_sac or '—' }}</td>
+        <td>{{ item.unit }}</td>
+        <td class="text-right amt fw" style="color:var(--accent);">{{ format_currency(item.selling_price) }}</td>
+        <td class="text-right amt">{{ format_currency(item.purchase_price) }}</td>
+        <td class="text-right"><span class="badge badge-warning">{{ item.gst_rate }}%</span></td>
+        <td>
+          <div class="table-actions">
+            <a href="{{ url_for('items.edit', id=item.id) }}" class="btn btn-sm btn-secondary">Edit</a>
+            <form method="POST" action="{{ url_for('items.delete', id=item.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-danger" data-confirm="Delete this item?">Del</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% from 'components/pagination.html' import render_pagination %}
+{{ render_pagination(pagination, 'items.list') }}
+
+<!-- Import Modal -->
+<div id="importModal" class="modal">
+  <div class="modal-content" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">📥 Import Items</div>
+      <button type="button" class="btn-close" onclick="document.getElementById('importModal').classList.remove('active')">×</button>
+    </div>
+    <form method="POST" action="{{ url_for('items.import_csv') }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:12px;">Upload a CSV file containing your items. Required columns: <b>Name</b>, <b>Selling Price</b>.</p>
+        <div class="form-group">
+          <input type="file" name="file" class="form-control" accept=".csv" required>
+        </div>
+      </div>
+      <div class="modal-footer" style="text-align:right;">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('importModal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Upload</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">📦</div>
+    <div class="empty-title">No items yet</div>
+    <div class="empty-desc">Add products or services to your catalog</div>
+    <a href="{{ url_for('items.add') }}" class="btn btn-primary">+ Add First Item</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

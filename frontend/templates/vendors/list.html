@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}Vendors{% endblock %}
+{% block page_title %}Vendors{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Vendors / Suppliers</div>
+    <div class="page-subtitle">{{ vendors|length }} vendors</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('vendors.list', export='csv', q=search) }}" class="btn btn-outline" style="color:#10b981;border-color:#10b981;">📊 Export CSV</a>
+    <a href="{{ url_for('vendors.add') }}" class="btn btn-primary">+ Add Vendor</a>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <form class="search-bar" style="flex:1;max-width:320px;" method="GET">
+    <span class="search-icon">🔍</span>
+    <input type="text" name="q" value="{{ search }}" placeholder="Search vendors...">
+  </form>
+</div>
+
+{% if vendors %}
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>GSTIN</th>
+        <th>State</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in vendors %}
+      <tr>
+        <td class="fw">{{ v.name }}
+          {% if v.company_name %}<div style="font-size:0.78rem;color:var(--text-muted);">{{ v.company_name }}</div>{% endif %}
+        </td>
+        <td>{{ v.phone or '—' }}</td>
+        <td>{{ v.email or '—' }}</td>
+        <td>{{ v.gstin or '—' }}</td>
+        <td>{{ v.state or '—' }}</td>
+        <td>
+          <div class="table-actions">
+            <a href="{{ url_for('vendors.edit', id=v.id) }}" class="btn btn-sm btn-secondary">Edit</a>
+            <form method="POST" action="{{ url_for('vendors.delete', id=v.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-danger" data-confirm="Delete this vendor?">Del</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% from 'components/pagination.html' import render_pagination %}
+{{ render_pagination(pagination, 'vendors.list') }}
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">🏭</div>
+    <div class="empty-title">No vendors yet</div>
+    <a href="{{ url_for('vendors.add') }}" class="btn btn-primary">+ Add First Vendor</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

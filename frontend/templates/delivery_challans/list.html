@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Delivery Challans{% endblock %}
+{% block page_title %}Delivery Challans{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">Delivery Challans</div></div>
+  <a href="{{ url_for('delivery_challans.create') }}" class="btn btn-primary">+ New DC</a>
+</div>
+
+<div class="tabs mb-16">
+  <a href="{{ url_for('delivery_challans.list') }}" class="tab-item {{ 'active' if not status }}">All</a>
+  <a href="{{ url_for('delivery_challans.list', status='draft') }}" class="tab-item {{ 'active' if status == 'draft' }}">Draft</a>
+  <a href="{{ url_for('delivery_challans.list', status='dispatched') }}" class="tab-item {{ 'active' if status == 'dispatched' }}">Dispatched</a>
+  <a href="{{ url_for('delivery_challans.list', status='delivered') }}" class="tab-item {{ 'active' if status == 'delivered' }}">Delivered</a>
+</div>
+
+{% if challans %}
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr><th>DC No</th><th>Customer</th><th>Date</th><th>Type</th><th>Vehicle</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for dc in challans %}
+      <tr>
+        <td class="fw" style="color:var(--accent);">{{ dc.dc_no }}</td>
+        <td>{{ dc.customer.name }}</td>
+        <td>{{ dc.dc_date.strftime('%d %b %Y') }}</td>
+        <td><span class="badge badge-info">{{ dc.dc_type | replace('_',' ') | title }}</span></td>
+        <td>{{ dc.vehicle_no or '—' }}</td>
+        <td>
+          <span class="badge badge-{{ 'success' if dc.status == 'delivered' else ('info' if dc.status == 'dispatched' else 'draft') }}">
+            {{ dc.status }}
+          </span>
+        </td>
+        <td>
+          <a href="{{ url_for('delivery_challans.view', id=dc.id) }}" class="btn btn-sm btn-secondary">View</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% from 'components/pagination.html' import render_pagination %}
+{{ render_pagination(pagination, 'delivery_challans.list') }}
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">🚚</div>
+    <div class="empty-title">No delivery challans yet</div>
+    <a href="{{ url_for('delivery_challans.create') }}" class="btn btn-primary">+ Create DC</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

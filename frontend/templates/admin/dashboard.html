@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Super Admin Dashboard{% endblock %}
+{% block page_title %}Super Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">SaaS Overview</div>
+    <div class="page-subtitle">Platform-wide metrics</div>
+  </div>
+  <a href="{{ url_for('admin.organizations') }}" class="btn btn-outline">Manage Organizations</a>
+</div>
+
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:24px;">
+  <div class="stat-card" style="--accent-color:#6366f1;">
+    <div class="stat-icon">🏢</div>
+    <div class="stat-value">{{ total_orgs }}</div>
+    <div class="stat-label">Total Orgs</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#3b82f6;">
+    <div class="stat-icon">👥</div>
+    <div class="stat-value">{{ total_users }}</div>
+    <div class="stat-label">Total Users</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#10b981;">
+    <div class="stat-icon">💳</div>
+    <div class="stat-value">{{ active_subs }}</div>
+    <div class="stat-label">Active Paid Subs</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#f59e0b;">
+    <div class="stat-icon">💰</div>
+    <div class="stat-value">{{ format_currency(total_revenue) }}</div>
+    <div class="stat-label">Total Revenue (Subscriptions)</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#8b5cf6;">
+    <div class="stat-icon">🧾</div>
+    <div class="stat-value">{{ total_invoices }}</div>
+    <div class="stat-label">Platform Invoices Created</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#ec4899;">
+    <div class="stat-icon">📈</div>
+    <div class="stat-value">{{ format_currency(total_invoiced_amount) }}</div>
+    <div class="stat-label">Total Invoiced Amount (All Orgs)</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Recent Signups</div>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>Organization</th><th>Plan</th><th>Status</th><th>Joined</th></tr>
+      </thead>
+      <tbody>
+        {% for org in recent_orgs %}
+        <tr>
+          <td class="fw-600">{{ org.name }}</td>
+          <td>
+            <span class="badge badge-{{ 'success' if org.plan == 'pro' else ('info' if org.plan == 'basic' else 'draft') }}">
+              {{ org.plan | upper }}
+            </span>
+          </td>
+          <td>
+            {% if org.is_active %}
+              <span class="badge badge-success">Active</span>
+            {% else %}
+              <span class="badge badge-danger">Suspended</span>
+            {% endif %}
+          </td>
+          <td>{{ org.created_at.strftime('%d %b %Y') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

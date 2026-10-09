@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ po.po_no }} — {{ org.name }}</title>
+<style>
+  @page {
+      size: A4;
+      margin: 1.5cm;
+  }
+  body { 
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+      font-size: 10px; 
+      color: #334155;
+      line-height: 1.5;
+  }
+  
+  .w-100 { width: 100%; }
+  .w-50 { width: 50%; }
+  .text-right { text-align: right; }
+  .text-left { text-align: left; }
+  .text-center { text-align: center; }
+  .valign-top { vertical-align: top; }
+  
+  .header-table { width: 100%; margin-bottom: 30px; }
+  .company-name { font-size: 22px; font-weight: bold; color: #0f172a; margin-bottom: 4px; }
+  .company-meta { font-size: 10px; color: #64748b; }
+  .po-title { font-size: 24px; font-weight: bold; color: #4f46e5; letter-spacing: 1px; text-transform: uppercase; }
+  .po-no { font-size: 14px; color: #475569; margin-top: 5px; }
+
+  .divider { border-bottom: 1px solid #e2e8f0; margin-bottom: 25px; }
+
+  .parties-table { width: 100%; margin-bottom: 35px; }
+  .party-cell { width: 48%; }
+  .party-spacer { width: 4%; }
+  .party-label { font-size: 8px; color: #94a3b8; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  .party-name { font-size: 13px; font-weight: bold; color: #1e293b; margin-bottom: 4px; }
+  .party-meta { font-size: 10px; color: #475569; }
+
+  .items-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+  .items-table th { 
+      border-top: 1px solid #0f172a; 
+      border-bottom: 1px solid #0f172a; 
+      color: #0f172a; 
+      padding: 10px 5px; 
+      text-align: left; 
+      font-size: 9px; 
+      font-weight: bold; 
+      text-transform: uppercase; 
+      letter-spacing: 0.5px;
+  }
+  .items-table td { padding: 12px 5px; font-size: 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; color: #334155; }
+  .items-table .right { text-align: right; }
+  
+  .summary-table { width: 100%; margin-top: 20px; }
+  .notes-cell { width: 60%; vertical-align: top; padding-right: 30px; }
+  
+  .totals-cell { width: 40%; vertical-align: top; }
+  .t-table { width: 100%; font-size: 11px; }
+  .t-table td { padding: 6px 4px; border-bottom: 1px solid #f1f5f9; }
+  .t-label { color: #475569; }
+  .t-val { font-weight: bold; color: #1e293b; text-align: right; }
+  
+  .t-grand-row td { 
+      border-top: 2px solid #0f172a; 
+      border-bottom: 2px solid #0f172a; 
+      color: #0f172a; 
+      font-weight: bold; 
+      font-size: 14px; 
+      padding: 10px 4px; 
+      background-color: #f8fafc;
+  }
+  .t-grand-val { text-align: right; }
+
+  .words-box { margin-top: 15px; font-size: 10px; color: #475569; }
+  .words-box-label { font-size: 8px; color: #94a3b8; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  
+  .signature-table { width: 100%; margin-top: 40px; }
+  .sig-cell { width: 100%; text-align: right; }
+  .sig-label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+  .sig-name { font-size: 12px; font-weight: bold; color: #1e293b; margin-top: 35px; border-top: 1px solid #cbd5e1; display: inline-block; padding-top: 8px; min-width: 200px; text-align: center; }
+</style>
+</head>
+<body>
+
+  <!-- Header -->
+  <table class="header-table">
+    <tr>
+      <td class="w-50 valign-top">
+        {% if org.logo_url %}
+          <img src="{{ org.logo_url }}" style="max-height: 70px; max-width: 180px; margin-bottom: 12px;">
+        {% endif %}
+        <div class="company-name">{{ org.name }}</div>
+        <div class="company-meta">
+          {% if org.address_line1 %}{{ org.address_line1 }}<br>{% endif %}
+          {% if org.address_line2 %}{{ org.address_line2 }}<br>{% endif %}
+          {{ org.city }}, {{ org.state }} - {{ org.pincode }}<br>
+          {% if org.gstin %}<strong>GSTIN:</strong> {{ org.gstin }}<br>{% endif %}
+          {% if org.email %}<strong>Email:</strong> {{ org.email }}<br>{% endif %}
+          {% if org.phone %}<strong>Phone:</strong> {{ org.phone }}{% endif %}
+        </div>
+      </td>
+      <td class="w-50 valign-top text-right">
+        <div class="po-title">PURCHASE ORDER</div>
+        <div class="po-no">#{{ po.po_no }}</div>
+        
+        <table style="width: 100%; margin-top: 15px; font-size: 10px;">
+          <tr>
+            <td class="text-right" style="color: #64748b; padding-bottom: 4px;">PO Date:</td>
+            <td class="text-right" style="font-weight: bold; color: #1e293b; padding-bottom: 4px; padding-left: 10px;">{{ po.po_date.strftime('%d %b %Y') }}</td>
+          </tr>
+          {% if po.delivery_date %}
+          <tr>
+            <td class="text-right" style="color: #64748b; padding-bottom: 4px;">Delivery Date:</td>
+            <td class="text-right" style="font-weight: bold; color: #1e293b; padding-bottom: 4px; padding-left: 10px;">{{ po.delivery_date.strftime('%d %b %Y') }}</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td class="text-right" style="color: #64748b; padding-bottom: 4px;">Status:</td>
+            <td class="text-right" style="font-weight: bold; color: #4f46e5; text-transform: uppercase; padding-bottom: 4px; padding-left: 10px;">{{ po.status }}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <div class="divider"></div>
+
+  <!-- Parties -->
+  <table class="parties-table">
+    <tr>
+      <td class="party-cell valign-top">
+        <div class="party-label">Vendor Details</div>
+        <div class="party-name">{{ po.vendor.name }}</div>
+        <div class="party-meta">
+          {% if po.vendor.company_name %}{{ po.vendor.company_name }}<br>{% endif %}
+          {% if po.vendor.address %}{{ po.vendor.address }}<br>{% endif %}
+          {% if po.vendor.city %}{{ po.vendor.city }}, {{ po.vendor.state or '' }} - {{ po.vendor.pincode or '' }}<br>{% endif %}
+          {% if po.vendor.gstin %}<span style="margin-top:4px;display:block;"><strong>GSTIN:</strong> {{ po.vendor.gstin }}</span>{% endif %}
+          {% if po.vendor.phone %}<strong>Phone:</strong> {{ po.vendor.phone }}<br>{% endif %}
+          {% if po.vendor.email %}<strong>Email:</strong> {{ po.vendor.email }}{% endif %}
+        </div>
+      </td>
+      <td class="party-spacer"></td>
+      <td class="party-cell valign-top">
+        <div class="party-label">Delivery / Shipping Address</div>
+        <div class="party-name">{{ org.name }}</div>
+        <div class="party-meta">
+          {% if po.delivery_address %}
+            {{ po.delivery_address }}
+          {% else %}
+            {% if org.address_line1 %}{{ org.address_line1 }}<br>{% endif %}
+            {% if org.address_line2 %}{{ org.address_line2 }}<br>{% endif %}
+            {{ org.city }}, {{ org.state }} - {{ org.pincode }}
+          {% endif %}
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Items -->
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width: 5%;">#</th>
+        <th style="width: 35%;">Item & Description</th>
+        <th style="width: 10%;">HSN/SAC</th>
+        <th class="right" style="width: 10%;">Qty</th>
+        <th class="right" style="width: 10%;">Rate</th>
+        <th class="right" style="width: 15%;">Taxable</th>
+        {% if not po.is_igst %}
+          <th class="right" style="width: 15%;">GST</th>
+        {% else %}
+          <th class="right" style="width: 15%;">IGST</th>
+        {% endif %}
+        <th class="right" style="width: 15%;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in po.items %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          <strong style="color: #0f172a;">{{ item.description }}</strong>
+        </td>
+        <td>{{ item.hsn_sac or '-' }}</td>
+        <td class="right">{{ item.qty }} {{ item.unit }}</td>
+        <td class="right">{{ format_currency(item.rate) }}</td>
+        <td class="right">{{ format_currency(item.taxable_amount) }}</td>
+        {% if not po.is_igst %}
+          <td class="right">
+            {{ format_currency(item.cgst_amount|float + item.sgst_amount|float) }}<br>
+            <span style="color:#64748b; font-size:8px;">({{ item.gst_rate }}%)</span>
+          </td>
+        {% else %}
+          <td class="right">
+            {{ format_currency(item.igst_amount) }}<br>
+            <span style="color:#64748b; font-size:8px;">({{ item.gst_rate }}%)</span>
+          </td>
+        {% endif %}
+        <td class="right">
+          <strong>{{ format_currency(item.taxable_amount|float + item.cgst_amount|float + item.sgst_amount|float + item.igst_amount|float) }}</strong>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Summary Area -->
+  <table class="summary-table">
+    <tr>
+      <td class="notes-cell">
+        <div class="words-box">
+          <div class="words-box-label">Amount in Words</div>
+          <strong>Rupees {{ amount_in_words }} Only.</strong>
+        </div>
+        
+        {% if po.notes %}
+        <div style="margin-top:20px; font-size:10px; color:#475569;">
+          <div style="font-size: 8px; color: #94a3b8; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">Notes & Instructions</div>
+          {{ po.notes }}
+        </div>
+        {% endif %}
+
+        {% if po.terms %}
+        <div style="margin-top:15px; font-size:10px; color:#475569;">
+          <div style="font-size: 8px; color: #94a3b8; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px;">Terms & Conditions</div>
+          {{ po.terms }}
+        </div>
+        {% endif %}
+      </td>
+      <td class="totals-cell">
+        <table class="t-table">
+          <tr>
+            <td class="t-label">Taxable Amount</td>
+            <td class="t-val">₹{{ format_currency(po.taxable_amount) }}</td>
+          </tr>
+          {% if not po.is_igst %}
+          <tr>
+            <td class="t-label">CGST Amount</td>
+            <td class="t-val">₹{{ format_currency(po.cgst_amount) }}</td>
+          </tr>
+          <tr>
+            <td class="t-label">SGST Amount</td>
+            <td class="t-val">₹{{ format_currency(po.sgst_amount) }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td class="t-label">IGST Amount</td>
+            <td class="t-val">₹{{ format_currency(po.igst_amount) }}</td>
+          </tr>
+          {% endif %}
+          <tr class="t-grand-row">
+            <td>Grand Total</td>
+            <td class="t-grand-val">₹{{ format_currency(po.grand_total) }}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Signature -->
+  <table class="signature-table">
+    <tr>
+      <td class="sig-cell">
+        <div class="sig-name">
+          <div class="sig-label" style="margin-bottom: 5px;">Authorized Signatory For</div>
+          {{ org.name }}
+        </div>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

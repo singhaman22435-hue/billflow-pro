@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}GSTR-3B Summary{% endblock %}
+{% block page_title %}📋 GSTR-3B Summary{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">GSTR-3B Monthly Summary</div>
+    <div class="page-subtitle">Tax Liability Summary for filing</div>
+  </div>
+  <button onclick="window.print()" class="btn btn-primary">🖨️ Print / Save PDF</button>
+</div>
+
+<!-- Date Filter -->
+<div class="card mb-16">
+  <div class="card-body">
+    <form method="GET" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">From</label>
+        <input type="date" name="from" class="form-control" value="{{ from_date }}">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">To</label>
+        <input type="date" name="to" class="form-control" value="{{ to_date }}">
+      </div>
+      <button type="submit" class="btn btn-primary">Apply</button>
+    </form>
+  </div>
+</div>
+
+<!-- 3.1 Outward Supplies -->
+<div class="card mb-16">
+  <div class="card-header" style="background:linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.1));"><div class="card-title">3.1 — Outward Taxable Supplies (Tax Payable)</div></div>
+  <div class="card-body">
+    <div class="stats-grid" style="grid-template-columns:repeat(5,1fr);">
+      <div class="stat-card" style="--accent-color:#6366f1;--accent-bg:rgba(99,102,241,0.1);">
+        <div class="stat-icon">🧾</div>
+        <div class="stat-value" style="font-size:1rem;">{{ format_currency(total_turnover) }}</div>
+        <div class="stat-label">Total Turnover</div>
+      </div>
+      <div class="stat-card" style="--accent-color:#8b5cf6;--accent-bg:rgba(139,92,246,0.1);">
+        <div class="stat-icon">📊</div>
+        <div class="stat-value" style="font-size:1rem;">{{ format_currency(total_taxable) }}</div>
+        <div class="stat-label">Taxable Value</div>
+      </div>
+      <div class="stat-card" style="--accent-color:#10b981;--accent-bg:rgba(16,185,129,0.1);">
+        <div class="stat-icon">⚖️</div>
+        <div class="stat-value" style="font-size:1rem;">{{ format_currency(total_cgst) }}</div>
+        <div class="stat-label">CGST</div>
+      </div>
+      <div class="stat-card" style="--accent-color:#10b981;--accent-bg:rgba(16,185,129,0.1);">
+        <div class="stat-icon">⚖️</div>
+        <div class="stat-value" style="font-size:1rem;">{{ format_currency(total_sgst) }}</div>
+        <div class="stat-label">SGST/UTGST</div>
+      </div>
+      <div class="stat-card" style="--accent-color:#f59e0b;--accent-bg:rgba(245,158,11,0.1);">
+        <div class="stat-icon">🌐</div>
+        <div class="stat-value" style="font-size:1rem;">{{ format_currency(total_igst) }}</div>
+        <div class="stat-label">IGST</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="card-header"><div class="card-title">Rate-Wise Breakup</div></div>
+      <div class="table-wrapper" style="border:none;border-radius:0;">
+        <table>
+          <thead>
+            <tr><th>GST Rate</th><th class="text-right">Taxable Value</th><th class="text-right">CGST</th><th class="text-right">SGST</th><th class="text-right">IGST</th><th class="text-right">Total Tax</th></tr>
+          </thead>
+          <tbody>
+            {% for rate, data in rate_wise.items() %}
+            <tr>
+              <td><span class="badge badge-info">{{ rate|int }}%</span></td>
+              <td class="text-right">{{ format_currency(data.taxable) }}</td>
+              <td class="text-right">{{ format_currency(data.cgst) }}</td>
+              <td class="text-right">{{ format_currency(data.sgst) }}</td>
+              <td class="text-right">{{ format_currency(data.igst) }}</td>
+              <td class="text-right fw-700">{{ format_currency(data.cgst + data.sgst + data.igst) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr style="font-weight:700;background:var(--accent-glow);">
+              <td>Total</td>
+              <td class="text-right">{{ format_currency(total_taxable) }}</td>
+              <td class="text-right">{{ format_currency(total_cgst) }}</td>
+              <td class="text-right">{{ format_currency(total_sgst) }}</td>
+              <td class="text-right">{{ format_currency(total_igst) }}</td>
+              <td class="text-right" style="color:var(--accent);">{{ format_currency(total_tax) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 6.1 Total Tax Liability -->
+<div class="card mb-16">
+  <div class="card-header"><div class="card-title">6.1 — Net Tax Payable</div></div>
+  <div class="card-body">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+      {% for label, val, color in [('CGST Payable', total_cgst, '#6366f1'), ('SGST/UTGST Payable', total_sgst, '#8b5cf6'), ('IGST Payable', total_igst, '#f59e0b')] %}
+      <div style="background:rgba(99,102,241,0.05);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;font-weight:600;">{{ label }}</div>
+        <div style="font-size:1.4rem;font-weight:800;color:{{ color }};">{{ format_currency(val) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div style="text-align:center;margin-top:20px;padding:16px;background:var(--accent-glow);border-radius:12px;">
+      <div style="font-size:0.85rem;color:var(--text-muted);">TOTAL GST PAYABLE THIS PERIOD</div>
+      <div style="font-size:2rem;font-weight:900;color:var(--accent);">{{ format_currency(total_tax) }}</div>
+    </div>
+  </div>
+</div>
+
+<style>@media print { .sidebar,.topbar,.page-header,.card-header button,form,.btn{display:none!important;} }</style>
+{% endblock %}

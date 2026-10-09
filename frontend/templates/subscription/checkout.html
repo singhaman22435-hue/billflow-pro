@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Checkout{% endblock %}
+{% block page_title %}Complete Payment{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:540px;margin:40px auto;">
+  <div class="card-body" style="padding:40px;">
+    <div style="text-align:center;font-size:3rem;margin-bottom:16px;">💳</div>
+    <h2 style="text-align:center;font-family:'Sora',sans-serif;margin-bottom:8px;">{{ plan.name }} Plan</h2>
+    <div style="text-align:center;font-size:2rem;font-weight:800;color:var(--accent);margin-bottom:32px;">
+      ₹{{ plan.amount }}
+    </div>
+
+    <!-- Manual UPI Form -->
+    <div id="tab-upi" style="text-align:center;">
+      <p class="text-muted mb-16">Scan the QR code below to pay via any UPI app (GPay, PhonePe, Paytm).</p>
+      
+      <!-- Generate QR Code using QuickChart API -->
+      <img src="https://quickchart.io/qr?text=upi://pay?pa={{ upi_id }}%26am={{ plan.amount }}%26cu=INR&size=200" alt="UPI QR Code" style="border-radius:12px; border:2px solid var(--border); padding:10px; margin-bottom:16px;">
+      
+      <div style="font-size:1.2rem; font-weight:700; margin-bottom:24px;">UPI ID: <span class="text-accent">{{ upi_id }}</span></div>
+      
+      <form action="{{ url_for('subscription.pay_manual_upi', plan_id=plan_id) }}" method="POST" enctype="multipart/form-data" style="text-align:left;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div class="form-group">
+          <label>12-Digit UTR / Transaction ID <span class="text-danger">*</span></label>
+          <input type="text" name="utr_number" class="form-control" placeholder="e.g. 312345678901" required>
+        </div>
+        
+        <div class="form-group">
+          <label>Upload Screenshot (Optional)</label>
+          <input type="file" name="screenshot" class="form-control" accept="image/*">
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Submit for Approval</button>
+      </form>
+    </div>
+    
+    <div style="margin-top:24px;text-align:center;">
+      <a href="{{ url_for('subscription.pricing') }}" class="text-muted" style="text-decoration:underline;">Cancel and return</a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

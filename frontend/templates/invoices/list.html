@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}Invoices{% endblock %}
+{% block page_title %}Invoices{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Invoices</div>
+    <div class="page-subtitle">Manage all your tax invoices</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('invoices.list', export='csv', status=status, q=search) }}" class="btn btn-outline" style="color:#10b981;border-color:#10b981;" title="Export all invoices to Excel/CSV">
+      📊 Export CSV
+    </a>
+    <form method="POST" action="{{ url_for('invoices.send_reminders') }}" style="display:inline;" onsubmit="return confirm('Send reminder emails to all customers with overdue invoices?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-outline" style="color:#ef4444;border-color:#ef4444;">🔔 Send Reminders</button>
+    </form>
+    <a href="{{ url_for('invoices.create') }}" class="btn btn-primary">+ New Invoice</a>
+  </div>
+</div>
+
+<!-- Tabs by Status -->
+<div class="tabs mb-16">
+  <a href="{{ url_for('invoices.list') }}" class="tab-item {{ 'active' if not status }}">All</a>
+  <a href="{{ url_for('invoices.list', status='draft') }}" class="tab-item {{ 'active' if status == 'draft' }}">Draft</a>
+  <a href="{{ url_for('invoices.list', status='sent') }}" class="tab-item {{ 'active' if status == 'sent' }}">Sent</a>
+  <a href="{{ url_for('invoices.list', status='partial') }}" class="tab-item {{ 'active' if status == 'partial' }}">Partial</a>
+  <a href="{{ url_for('invoices.list', status='paid') }}" class="tab-item {{ 'active' if status == 'paid' }}">Paid</a>
+  <a href="{{ url_for('invoices.list', status='cancelled') }}" class="tab-item {{ 'active' if status == 'cancelled' }}">Cancelled</a>
+</div>
+
+<div class="filter-bar">
+  <form class="search-bar" style="flex:1;max-width:320px;" method="GET">
+    <span class="search-icon">🔍</span>
+    <input type="text" name="q" value="{{ search }}" placeholder="Search by customer...">
+    {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+  </form>
+</div>
+
+{% if invoices %}
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Invoice No</th>
+        <th>Customer</th>
+        <th>Date</th>
+        <th>Due Date</th>
+        <th class="text-right">Grand Total</th>
+        <th class="text-right">Balance Due</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td class="fw"><a href="{{ url_for('invoices.view', id=inv.id) }}" style="color:var(--accent);">{{ inv.invoice_no }}</a></td>
+        <td>{{ inv.customer.name }}</td>
+        <td>{{ inv.invoice_date.strftime('%d %b %Y') }}</td>
+        <td>
+          {% if inv.due_date %}
+            <span style="{{ 'color:var(--danger);font-weight:600;' if inv.due_date < today and inv.status not in ['paid','cancelled'] else '' }}">
+              {{ inv.due_date.strftime('%d %b %Y') }}
+            </span>
+          {% else %}—{% endif %}
+        </td>
+        <td class="text-right amt fw">{{ format_currency(inv.grand_total) }}</td>
+        <td class="text-right amt" style="color:{{ 'var(--danger)' if inv.balance_due > 0 else 'var(--success)' }};">{{ format_currency(inv.balance_due) }}</td>
+        <td><span class="badge badge-{{ inv.status }}">{{ inv.status }}</span></td>
+        <td>
+          <div style="display:flex; gap:8px;">
+            <a href="{{ url_for('invoices.view', id=inv.id) }}" class="btn btn-sm btn-secondary">View</a>
+            <a href="{{ url_for('invoices.download_pdf', id=inv.id) }}" class="btn btn-sm btn-outline" title="PDF" target="_blank">⬇️</a>
+            
+            {% if inv.status == 'draft' %}
+            <form method="POST" action="{{ url_for('invoices.update_status', id=inv.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="status" value="sent">
+              <button class="btn btn-sm btn-outline" title="Mark as Sent">✅</button>
+            </form>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('invoices.delete', id=inv.id) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this invoice?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline" title="Delete" style="color:var(--danger);border-color:var(--danger);">🗑️</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% from 'components/pagination.html' import render_pagination %}
+  {{ render_pagination(pagination, 'invoices.list') }}
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">🧾</div>
+    <div class="empty-title">No invoices found</div>
+    <div class="empty-desc">Create your first GST invoice in seconds</div>
+    <a href="{{ url_for('invoices.create') }}" class="btn btn-primary">+ Create Invoice</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const today = new Date().toISOString().split('T')[0];
+</script>
+{% endblock %}

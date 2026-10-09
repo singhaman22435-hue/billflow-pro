@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — BillFlow Pro</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-primary); padding: 24px 0; }
+    .auth-bg { position: fixed; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.06) 0%, transparent 50%); }
+    .auth-container { position: relative; z-index: 1; width: 100%; max-width: 500px; padding: 24px; }
+    .auth-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    .auth-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; justify-content: center; }
+    .auth-logo .logo-icon { width: 48px; height: 48px; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 0 30px rgba(99,102,241,0.4); }
+    .auth-logo .brand { font-family: 'Sora', sans-serif; font-size: 1.4rem; font-weight: 800; background: linear-gradient(135deg, #e0e7ff, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .auth-title { font-family: 'Sora', sans-serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+    .auth-subtitle { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 24px; }
+    .auth-footer { text-align: center; margin-top: 20px; color: var(--text-muted); font-size: 0.85rem; }
+    .btn-full { width: 100%; justify-content: center; padding: 11px; font-size: 0.95rem; }
+    .plans-mini { display: flex; gap: 8px; margin-bottom: 20px; }
+    .plan-chip { flex: 1; text-align: center; padding: 10px 8px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.78rem; }
+    .plan-chip.highlight { border-color: var(--accent); background: var(--accent-glow); }
+    .plan-chip .plan-name { font-weight: 700; color: var(--text-primary); display: block; margin-bottom: 2px; }
+    .plan-chip .plan-desc { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+<div class="auth-bg"></div>
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-icon">💼</div>
+      <div class="brand">BillFlow Pro</div>
+    </div>
+
+    <div class="auth-title">Start your free account</div>
+    <div class="auth-subtitle">No credit card needed. 50 invoices free every month.</div>
+
+    <div class="plans-mini">
+      <div class="plan-chip highlight">
+        <span class="plan-name">Free</span>
+        <span class="plan-desc">50 inv/mo</span>
+      </div>
+      <div class="plan-chip">
+        <span class="plan-name">Basic</span>
+        <span class="plan-desc">₹499/mo</span>
+      </div>
+      <div class="plan-chip">
+        <span class="plan-name">Pro</span>
+        <span class="plan-desc">₹999/mo</span>
+      </div>
+    </div>
+
+    <form method="POST" id="registerForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label class="form-label">Company / Business Name <span class="required">*</span></label>
+        <input type="text" name="company_name" class="form-control" placeholder="Patil Enterprises Pvt Ltd" required>
+      </div>
+      <div class="form-row col-2">
+        <div class="form-group">
+          <label class="form-label">Your Full Name <span class="required">*</span></label>
+          <input type="text" name="name" class="form-control" placeholder="Rahul Patil" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address <span class="required">*</span></label>
+          <input type="email" name="email" class="form-control" placeholder="you@company.com" required>
+        </div>
+      </div>
+      <div class="form-row col-2">
+        <div class="form-group">
+          <label class="form-label">Password <span class="required">*</span></label>
+          <input type="password" name="password" id="reg_password" class="form-control" placeholder="Min 8 characters" required minlength="8">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm Password <span class="required">*</span></label>
+          <input type="password" name="confirm_password" class="form-control" placeholder="Repeat password" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full">Create Free Account →</button>
+      <div class="divider-text">OR</div>
+      
+      <a href="{{ url_for('auth.google_login') }}" class="btn btn-outline btn-full" style="display:flex;align-items:center;gap:12px;font-weight:600;margin-bottom:16px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
+          <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+          <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
+          <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.222 0-9.654-3.343-11.303-8l-6.571 4.819C9.656 39.663 16.318 44 24 44z"/>
+          <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C41.012 35.536 44 30.137 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+        </svg>
+        Sign up with Google
+      </a>
+
+      <div class="auth-footer">
+        Already have an account? <a href="{{ url_for('auth.login') }}" style="font-weight:600;color:var(--accent);">Log in</a>
+      </div>
+    </form>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div style="margin-top:12px;">
+    {% for cat, msg in messages %}
+    <div class="alert alert-{{ 'danger' if cat == 'error' else cat }}" style="margin-bottom:8px;">{{ msg }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+</div>
+</body>
+</html>

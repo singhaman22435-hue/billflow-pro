@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}500 — Server Error{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:center;min-height:70vh;text-align:center;">
+  <div>
+    <div style="font-size:5rem;margin-bottom:16px;">⚠️</div>
+    <div style="font-family:'Sora',sans-serif;font-size:3rem;font-weight:800;color:var(--warning);margin-bottom:8px;">500</div>
+    <div style="font-size:1.2rem;font-weight:600;margin-bottom:8px;">Internal Server Error</div>
+    <div class="text-muted" style="margin-bottom:24px;">Something went wrong. Please try again.</div>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">← Go to Dashboard</a>
+  </div>
+</div>
+{% endblock %}

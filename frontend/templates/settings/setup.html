@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Setup Your Company{% endblock %}
+{% block page_title %}Company Setup{% endblock %}
+
+{% block content %}
+<div style="max-width:600px;margin:0 auto;">
+  <div style="text-align:center;margin-bottom:32px;">
+    <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
+    <div class="page-title">Welcome to BillFlow Pro!</div>
+    <div class="page-subtitle" style="margin-top:8px;">Let's set up your company profile to get started</div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <a href="{{ url_for('settings.company') }}" class="card glow-hover" style="padding:20px;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:16px;">
+          <div style="width:48px;height:48px;background:var(--accent-glow);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;">🏢</div>
+          <div>
+            <div style="font-weight:700;color:var(--text-primary);font-size:0.95rem;">Company Profile</div>
+            <div class="text-muted" style="font-size:0.82rem;margin-top:2px;">Add your GSTIN, address, logo, and bank details</div>
+          </div>
+          <span style="margin-left:auto;color:var(--text-muted);">→</span>
+        </a>
+
+        <a href="{{ url_for('items.add') }}" class="card glow-hover" style="padding:20px;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:16px;">
+          <div style="width:48px;height:48px;background:rgba(16,185,129,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;">📦</div>
+          <div>
+            <div style="font-weight:700;color:var(--text-primary);font-size:0.95rem;">Add Products / Services</div>
+            <div class="text-muted" style="font-size:0.82rem;margin-top:2px;">Create your item catalog with HSN codes and GST rates</div>
+          </div>
+          <span style="margin-left:auto;color:var(--text-muted);">→</span>
+        </a>
+
+        <a href="{{ url_for('customers.add') }}" class="card glow-hover" style="padding:20px;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:16px;">
+          <div style="width:48px;height:48px;background:rgba(59,130,246,0.1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;">👥</div>
+          <div>
+            <div style="font-weight:700;color:var(--text-primary);font-size:0.95rem;">Add First Customer</div>
+            <div class="text-muted" style="font-size:0.82rem;margin-top:2px;">Add your customers with GST details</div>
+          </div>
+          <span style="margin-left:auto;color:var(--text-muted);">→</span>
+        </a>
+
+        <a href="{{ url_for('invoices.create') }}" class="card glow-hover" style="padding:20px;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:16px;border:1px solid rgba(99,102,241,0.4);">
+          <div style="width:48px;height:48px;background:var(--accent-glow);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;">🧾</div>
+          <div>
+            <div style="font-weight:700;color:var(--accent);font-size:0.95rem;">Create Your First Invoice</div>
+            <div class="text-muted" style="font-size:0.82rem;margin-top:2px;">Generate a GST-compliant invoice right away!</div>
+          </div>
+          <span style="margin-left:auto;color:var(--accent);">→</span>
+        </a>
+      </div>
+
+      <div style="text-align:center;margin-top:24px;">
+        <a href="{{ url_for('dashboard.index') }}" class="text-muted" style="font-size:0.85rem;">Skip for now → Go to Dashboard</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

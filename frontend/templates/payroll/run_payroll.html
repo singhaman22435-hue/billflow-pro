@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Run Payroll{% endblock %}
+{% block page_title %}Payroll{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">▶️ Run Payroll</div>
+    <div class="page-subtitle">Generate salary slips for employees</div>
+  </div>
+  <a href="{{ url_for('payroll.employees') }}" class="btn btn-secondary">← Employees</a>
+</div>
+
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header"><div class="card-title">📅 Select Payroll Month</div></div>
+    <div class="card-body" style="display:flex;align-items:center;gap:16px;">
+      <input type="month" name="month" class="form-control" value="{{ current_month }}" style="max-width:220px;" required>
+      <div class="text-muted" style="font-size:0.9rem;">Select all or specific employees below, then generate payslips.</div>
+    </div>
+  </div>
+
+  {% if employees %}
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">👥 Select Employees</div>
+      <button type="button" class="btn btn-sm btn-outline" onclick="toggleAll()">Select All</button>
+    </div>
+    <div class="table-wrapper" style="border:none;border-radius:0;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:50px;"><input type="checkbox" id="selectAll" onchange="toggleAll(this.checked)" style="accent-color:var(--accent);"></th>
+            <th>Employee</th>
+            <th class="text-right">Gross</th>
+            <th class="text-right">PF</th>
+            <th class="text-right">Net</th>
+            <th style="width:120px;">Paid Days</th>
+            <th style="width:120px;">Working Days</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for emp in employees %}
+          <tr>
+            <td><input type="checkbox" name="emp_ids" value="{{ emp.id }}" class="emp-check" style="accent-color:var(--accent);"></td>
+            <td>
+              <div class="fw-600">{{ emp.name }}</div>
+              <div class="text-muted" style="font-size:0.78rem;">{{ emp.designation or '' }} • {{ emp.emp_code or 'EMP-' + emp.id|string }}</div>
+            </td>
+            <td class="text-right amt">{{ format_currency(emp.gross_salary) }}</td>
+            <td class="text-right" style="color:var(--danger);">{{ format_currency(emp.pf_deduction) }}</td>
+            <td class="text-right amt fw-700" style="color:var(--accent);">{{ format_currency(emp.net_salary) }}</td>
+            <td><input type="number" name="paid_days_{{ emp.id }}" value="26" min="0" max="31" class="form-control" style="width:80px;text-align:center;"></td>
+            <td><input type="number" name="working_days_{{ emp.id }}" value="26" min="1" max="31" class="form-control" style="width:80px;text-align:center;"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:16px;display:flex;gap:12px;justify-content:flex-end;">
+      <button type="submit" class="btn btn-primary">✅ Generate Payslips</button>
+    </div>
+  </div>
+  {% else %}
+  <div class="card"><div class="empty-state"><div class="empty-icon">👥</div><div class="empty-title">No active employees</div><a href="{{ url_for('payroll.add_employee') }}" class="btn btn-primary">+ Add Employee</a></div></div>
+  {% endif %}
+</form>
+
+<script>
+let allSelected = false;
+function toggleAll(state) {
+  const checks = document.querySelectorAll('.emp-check');
+  const selectAll = document.getElementById('selectAll');
+  if (state === undefined) {
+    allSelected = !allSelected;
+    selectAll.checked = allSelected;
+    state = allSelected;
+  }
+  checks.forEach(c => c.checked = state);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% block title %}Employees — Payroll{% endblock %}
+{% block page_title %}Payroll{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">👥 Employees</div>
+    <div class="page-subtitle">Manage your team and run payroll</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('payroll.payslip_list') }}" class="btn btn-outline">📄 Payslips</a>
+    <a href="{{ url_for('payroll.run_payroll') }}" class="btn btn-secondary">▶️ Run Payroll</a>
+    <a href="{{ url_for('payroll.add_employee') }}" class="btn btn-primary">+ Add Employee</a>
+  </div>
+</div>
+
+{% if employees %}
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Emp Code</th>
+        <th>Name</th>
+        <th>Designation</th>
+        <th>Department</th>
+        <th class="text-right">Basic</th>
+        <th class="text-right">Gross</th>
+        <th class="text-right">Net</th>
+        <th>PF</th>
+        <th>Type</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for emp in employees %}
+      <tr>
+        <td><span class="badge" style="background:var(--accent-glow);color:var(--accent);">{{ emp.emp_code or '#' + emp.id|string }}</span></td>
+        <td>
+          <div class="fw-600">{{ emp.name }}</div>
+          {% if emp.email %}<div class="text-muted" style="font-size:0.78rem;">{{ emp.email }}</div>{% endif %}
+        </td>
+        <td>{{ emp.designation or '—' }}</td>
+        <td>{{ emp.department or '—' }}</td>
+        <td class="text-right amt">{{ format_currency(emp.basic_salary) }}</td>
+        <td class="text-right amt fw-600" style="color:var(--success);">{{ format_currency(emp.gross_salary) }}</td>
+        <td class="text-right amt fw-700" style="color:var(--accent);">{{ format_currency(emp.net_salary) }}</td>
+        <td><span class="badge {{ 'badge-success' if emp.pf_applicable else 'badge-draft' }}">{{ 'Yes' if emp.pf_applicable else 'No' }}</span></td>
+        <td><span class="badge badge-info">{{ emp.employment_type.replace('_',' ').title() }}</span></td>
+        <td>
+          <div class="table-actions">
+            <a href="{{ url_for('payroll.edit_employee', id=emp.id) }}" class="btn btn-sm btn-outline">✏️ Edit</a>
+            <form method="POST" action="{{ url_for('payroll.deactivate_employee', id=emp.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-danger" data-confirm="Deactivate {{ emp.name }}?">🗑️</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Payroll Summary -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:24px;">
+  <div class="card text-center" style="padding:20px;">
+    <div style="font-size:2rem;font-weight:800;color:var(--accent);">{{ employees|length }}</div>
+    <div class="text-muted" style="font-size:0.85rem;">Total Employees</div>
+  </div>
+  <div class="card text-center" style="padding:20px;">
+    <div style="font-size:1.4rem;font-weight:800;color:var(--success);">₹{{ format_currency(employees|sum(attribute='gross_salary')) }}</div>
+    <div class="text-muted" style="font-size:0.85rem;">Monthly Gross</div>
+  </div>
+  <div class="card text-center" style="padding:20px;">
+    <div style="font-size:1.4rem;font-weight:800;color:var(--accent);">₹{{ format_currency(employees|sum(attribute='net_salary')) }}</div>
+    <div class="text-muted" style="font-size:0.85rem;">Monthly Net Payout</div>
+  </div>
+  <div class="card text-center" style="padding:20px;">
+    <div style="font-size:1.4rem;font-weight:800;color:var(--warning);">₹{{ format_currency(employees|sum(attribute='pf_deduction')) }}</div>
+    <div class="text-muted" style="font-size:0.85rem;">Monthly PF (Employer)</div>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">👥</div>
+    <div class="empty-title">No employees added yet</div>
+    <div class="text-muted mb-16">Add your first employee to get started with payroll</div>
+    <a href="{{ url_for('payroll.add_employee') }}" class="btn btn-primary">+ Add First Employee</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

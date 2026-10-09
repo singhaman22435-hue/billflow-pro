@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block title %}Company Settings{% endblock %}
+{% block page_title %}Company Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Company Settings</div>
+    <div class="page-subtitle">Update your company profile and invoice preferences</div>
+  </div>
+</div>
+
+<form method="POST" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="grid-2" style="gap:24px;align-items:start;">
+    <div>
+      <!-- Company Info -->
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">🏢 Company Information</div></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Company Logo</label>
+            {% if org.logo_url %}
+            <div style="margin-bottom:10px;">
+              <img src="{{ org.logo_url }}" alt="Logo" style="max-height:60px;border-radius:8px;border:1px solid var(--border);">
+            </div>
+            {% endif %}
+            <input type="file" name="logo" class="form-control" accept="image/*">
+            <div class="form-help">JPG or PNG, max 2MB</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Business Name <span class="required">*</span></label>
+            <input type="text" name="name" class="form-control" value="{{ org.name }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Legal Name (if different)</label>
+            <input type="text" name="legal_name" class="form-control" value="{{ org.legal_name or '' }}">
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">GSTIN</label>
+              <input type="text" name="gstin" class="form-control" value="{{ org.gstin or '' }}" placeholder="22AAAAA0000A1Z5" maxlength="15">
+            </div>
+            <div class="form-group">
+              <label class="form-label">PAN</label>
+              <input type="text" name="pan" class="form-control" value="{{ org.pan or '' }}" placeholder="AAAAA0000A">
+            </div>
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" value="{{ org.email or '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="tel" name="phone" class="form-control" value="{{ org.phone or '' }}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Website</label>
+            <input type="url" name="website" class="form-control" value="{{ org.website or '' }}" placeholder="https://yourcompany.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address Line 1</label>
+            <input type="text" name="address_line1" class="form-control" value="{{ org.address_line1 or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address Line 2</label>
+            <input type="text" name="address_line2" class="form-control" value="{{ org.address_line2 or '' }}">
+          </div>
+          <div class="form-row col-3">
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <input type="text" name="city" class="form-control" value="{{ org.city or '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <select name="state" class="form-control">
+                {% for code, state in INDIAN_STATES %}
+                <option value="{{ state }}" {{ 'selected' if org.state == state else '' }}>{{ code }} - {{ state }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Pincode</label>
+              <input type="text" name="pincode" class="form-control" value="{{ org.pincode or '' }}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">State Code</label>
+            <input type="text" name="state_code" class="form-control" value="{{ org.state_code or '' }}" placeholder="e.g. 27 for Maharashtra">
+          </div>
+        </div>
+      </div>
+
+      <!-- Bank Details -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">🏦 Bank Details</div></div>
+        <div class="card-body">
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Bank Name</label>
+              <input type="text" name="bank_name" class="form-control" value="{{ org.bank_name or '' }}" placeholder="State Bank of India">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Account Number</label>
+              <input type="text" name="bank_account_no" class="form-control" value="{{ org.bank_account_no or '' }}">
+            </div>
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">IFSC Code</label>
+              <input type="text" name="bank_ifsc" class="form-control" value="{{ org.bank_ifsc or '' }}" placeholder="SBIN0001234">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Branch</label>
+              <input type="text" name="bank_branch" class="form-control" value="{{ org.bank_branch or '' }}">
+            </div>
+          </div>
+          <div class="form-row col-1">
+            <div class="form-group">
+              <label class="form-label">📱 UPI ID <span style="font-size:0.75rem;color:var(--text-muted);">(shown as QR on invoice print)</span></label>
+              <input type="text" name="upi_id" class="form-control" value="{{ org.upi_id or '' }}" placeholder="yourname@upi or 9999999999@paytm">
+              <div class="form-help">Customers can scan this QR on the invoice to pay instantly via UPI.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Invoice Settings -->
+    <div>
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">🧾 Invoice Settings</div></div>
+        <div class="card-body">
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Invoice Prefix</label>
+              <input type="text" name="invoice_prefix" class="form-control" value="{{ org.invoice_prefix or 'INV' }}" placeholder="INV">
+              <div class="form-help">e.g. INV → INV-2026-0001</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Starting Number</label>
+              <input type="number" name="invoice_start_no" class="form-control" value="{{ org.invoice_start_no or 1 }}" min="1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default Payment Terms</label>
+            <select name="default_payment_terms" class="form-control">
+              {% for d in [0,7,15,30,45,60,90] %}
+              <option value="{{ d }}" {{ 'selected' if org.default_payment_terms == d else '' }}>
+                {{ 'Immediate' if d == 0 else 'Net ' + d|string + ' Days' }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default Notes (on all invoices)</label>
+            <textarea name="default_notes" class="form-control" rows="3" placeholder="Thank you for your business!">{{ org.default_notes or '' }}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default Terms & Conditions</label>
+            <textarea name="default_terms" class="form-control" rows="3" placeholder="Payment terms, return policy...">{{ org.default_terms or '' }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Plan Info -->
+      <div class="card mb-16" style="background:linear-gradient(135deg,rgba(99,102,241,0.1),rgba(139,92,246,0.05));border-color:rgba(99,102,241,0.3);">
+        <div class="card-header"><div class="card-title">⭐ Your Plan</div></div>
+        <div class="card-body">
+          <div style="font-size:1.2rem;font-weight:700;color:var(--accent);text-transform:uppercase;margin-bottom:8px;">{{ org.plan }} Plan</div>
+          {% if org.plan == 'free' %}
+          <div class="text-muted" style="font-size:0.85rem;">50 invoices/month · 1 user</div>
+          <div style="margin-top:12px;background:var(--bg-input);border-radius:8px;height:8px;overflow:hidden;">
+            <div style="height:100%;width:{{ [org.invoice_count_this_month * 2, 100]|min }}%;background:var(--accent);border-radius:8px;"></div>
+          </div>
+          <div class="form-help mt-8">{{ org.invoice_count_this_month }}/50 invoices used this month</div>
+          <div style="margin-top:12px;">
+            <a href="#" class="btn btn-primary btn-sm">⬆️ Upgrade to Pro</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">
+        💾 Save Settings
+      </button>
+    </div>
+  </div>
+</form>
+{% endblock %}

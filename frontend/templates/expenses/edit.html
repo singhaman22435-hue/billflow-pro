@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Edit Expense{% endblock %}
+{% block page_title %}Edit Expense{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">Edit Expense</div></div>
+  <a href="{{ url_for('expenses.list') }}" class="btn btn-secondary">← Back</a>
+</div>
+
+<div style="max-width:600px;">
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="card">
+      <div class="card-header"><div class="card-title">💸 Expense Details</div></div>
+      <div class="card-body">
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Date <span class="required">*</span></label>
+            <input type="date" name="expense_date" class="form-control" value="{{ expense.expense_date.isoformat() }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category <span class="required">*</span></label>
+            <select name="category" class="form-control" required>
+              <option value="">Select Category</option>
+              {% for cat in categories %}
+              <option {{ 'selected' if expense.category == cat }}>{{ cat }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <input type="text" name="description" class="form-control" value="{{ expense.description or '' }}" placeholder="Brief description of expense">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Vendor (Optional)</label>
+            <select name="vendor_id" class="form-control">
+              <option value="">None / Direct Expense</option>
+              {% for v in vendors %}
+              <option value="{{ v.id }}" {{ 'selected' if expense.vendor_id == v.id }}>{{ v.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Amount (₹) <span class="required">*</span></label>
+            <input type="number" name="amount" class="form-control" step="0.01" min="0" value="{{ expense.amount }}" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Mode</label>
+            <select name="payment_mode" class="form-control">
+              <option value="cash" {{ 'selected' if expense.payment_mode == 'cash' }}>💵 Cash</option>
+              <option value="bank" {{ 'selected' if expense.payment_mode == 'bank' }}>🏦 Bank Transfer</option>
+              <option value="upi" {{ 'selected' if expense.payment_mode == 'upi' }}>📱 UPI</option>
+              <option value="cheque" {{ 'selected' if expense.payment_mode == 'cheque' }}>📃 Cheque</option>
+              <option value="neft" {{ 'selected' if expense.payment_mode == 'neft' }}>🔁 NEFT/RTGS</option>
+              <option value="credit_card" {{ 'selected' if expense.payment_mode == 'credit_card' }}>💳 Credit Card</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row col-2">
+          <div class="form-group">
+            <label class="form-label">Reference / Transaction No</label>
+            <input type="text" name="reference_no" class="form-control" value="{{ expense.reference_no or '' }}" placeholder="UTR, Cheque no, etc.">
+          </div>
+          <div class="form-group">
+            <label class="form-label">GST Amount (if applicable)</label>
+            <input type="number" name="gst_amount" class="form-control" step="0.01" min="0" value="{{ expense.gst_amount or 0 }}">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" name="is_gst_applicable" style="accent-color:var(--accent);width:16px;height:16px;" {{ 'checked' if expense.is_gst_applicable }}>
+            <span class="form-label" style="margin:0;">GST is applicable on this expense (Input Tax Credit)</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex gap-12 mt-16">
+      <button type="submit" class="btn btn-primary">💾 Update Expense</button>
+      <a href="{{ url_for('expenses.list') }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

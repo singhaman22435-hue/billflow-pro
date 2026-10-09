@@ -1,0 +1,44 @@
+{
+  "name": "BillFlow Pro",
+  "short_name": "BillFlow",
+  "description": "GST Billing & Accounting Software for Indian Businesses",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0a0a14",
+  "theme_color": "#6366f1",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Invoice",
+      "url": "/invoices/create",
+      "description": "Create a new invoice"
+    },
+    {
+      "name": "Customers",
+      "url": "/customers",
+      "description": "View all customers"
+    },
+    {
+      "name": "Reports",
+      "url": "/reports/pnl",
+      "description": "View P&L Statement"
+    }
+  ],
+  "categories": ["finance", "business", "productivity"],
+  "lang": "en-IN",
+  "dir": "ltr"
+}

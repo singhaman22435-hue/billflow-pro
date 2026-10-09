@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}{{ dc.dc_no }}{% endblock %}
+{% block page_title %}Delivery Challan{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ dc.dc_no }}</div>
+    <div class="page-subtitle">{{ dc.customer.name }} · {{ dc.dc_date.strftime('%d %b %Y') }}</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('delivery_challans.list') }}" class="btn btn-secondary">← Back</a>
+    <a href="{{ url_for('delivery_challans.download_pdf', id=dc.id, download=1) }}" class="btn btn-outline" target="_blank">📄 Download PDF</a>
+    <a href="{{ url_for('delivery_challans.download_pdf', id=dc.id) }}" class="btn btn-outline" target="_blank">🖨️ Print</a>
+    {% if dc.status == 'draft' %}
+    <form method="POST" action="{{ url_for('delivery_challans.update_status', id=dc.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="status" value="dispatched">
+      <button class="btn btn-primary">📤 Mark Dispatched</button>
+    </form>
+    {% elif dc.status == 'dispatched' %}
+    <form method="POST" action="{{ url_for('delivery_challans.update_status', id=dc.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="status" value="delivered">
+      <button class="btn btn-success">✅ Mark Delivered</button>
+    {% endif %}
+    {% if dc.status != 'cancelled' and not dc.invoice_id %}
+    <form method="POST" action="{{ url_for('delivery_challans.convert_to_invoice', id=dc.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline" style="color:var(--accent);border-color:var(--accent);">🧾 Convert to Invoice</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2" style="gap:20px;margin-bottom:20px;">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Delivery Details</div>
+      <span class="badge badge-{{ 'success' if dc.status == 'delivered' else ('info' if dc.status == 'dispatched' else 'draft') }}">{{ dc.status }}</span>
+    </div>
+    <div class="card-body">
+      <table style="width:100%;border:none;">
+        <tr><td class="form-label" style="width:130px;">Customer</td><td class="fw-600">{{ dc.customer.name }}</td></tr>
+        <tr><td class="form-label">DC No</td><td style="color:var(--accent);">{{ dc.dc_no }}</td></tr>
+        <tr><td class="form-label">DC Date</td><td>{{ dc.dc_date.strftime('%d %b %Y') }}</td></tr>
+        <tr><td class="form-label">Type</td><td>{{ dc.dc_type | replace('_',' ') | title }}</td></tr>
+        {% if dc.vehicle_no %}<tr><td class="form-label">Vehicle</td><td>{{ dc.vehicle_no }}</td></tr>{% endif %}
+        {% if dc.driver_name %}<tr><td class="form-label">Driver</td><td>{{ dc.driver_name }}</td></tr>{% endif %}
+        {% if dc.delivery_address %}<tr><td class="form-label">Deliver To</td><td>{{ dc.delivery_address }}</td></tr>{% endif %}
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">📦 Items Count</div></div>
+    <div class="card-body" style="text-align:center;padding:32px;">
+      <div style="font-size:3rem;font-weight:800;color:var(--accent);">{{ dc.items.count() }}</div>
+      <div class="text-muted">Line items in this challan</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><div class="card-title">📋 Items to Deliver</div></div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Description</th><th>HSN/SAC</th><th class="text-right">Qty</th><th>Unit</th><th>Remarks</th></tr>
+      </thead>
+      <tbody>
+        {% for item in dc.items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="fw">{{ item.description }}</td>
+          <td>{{ item.hsn_sac or '—' }}</td>
+          <td class="text-right fw-600" style="color:var(--accent);">{{ item.qty }}</td>
+          <td>{{ item.unit or '—' }}</td>
+          <td>{{ item.remarks or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% if dc.notes %}
+<div class="card mt-16">
+  <div class="card-body"><strong>Notes:</strong> {{ dc.notes }}</div>
+</div>
+{% endif %}
+{% endblock %}

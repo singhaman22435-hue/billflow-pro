@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if customer else 'Add' }} Customer{% endblock %}
+{% block page_title %}{{ 'Edit' if customer else 'Add' }} Customer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ 'Edit Customer' if customer else 'Add New Customer' }}</div>
+  </div>
+  <a href="{{ url_for('customers.list') }}" class="btn btn-secondary">← Back</a>
+</div>
+
+<form method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="grid-2" style="gap:24px;align-items:start;">
+    <!-- Basic Info -->
+    <div>
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">👤 Basic Information</div></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Customer Name <span class="required">*</span></label>
+            <input type="text" name="name" class="form-control" value="{{ customer.name if customer else '' }}" required placeholder="Full name / Company name">
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Display Name</label>
+              <input type="text" name="display_name" class="form-control" value="{{ customer.display_name if customer else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company Name</label>
+              <input type="text" name="company_name" class="form-control" value="{{ customer.company_name if customer else '' }}">
+            </div>
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" value="{{ customer.email if customer else '' }}" placeholder="customer@email.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input type="tel" name="phone" class="form-control" value="{{ customer.phone if customer else '' }}" placeholder="+91 98765 43210">
+            </div>
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">GSTIN</label>
+              <input type="text" name="gstin" class="form-control" value="{{ customer.gstin if customer else '' }}" placeholder="22AAAAA0000A1Z5" maxlength="15">
+            </div>
+            <div class="form-group">
+              <label class="form-label">PAN</label>
+              <input type="text" name="pan" class="form-control" value="{{ customer.pan if customer else '' }}" placeholder="AAAAA0000A" maxlength="10">
+            </div>
+          </div>
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <select name="state" class="form-control">
+                <option value="">Select State</option>
+                {% for code, state in INDIAN_STATES %}
+                <option value="{{ state }}" data-code="{{ code }}" {{ 'selected' if customer and customer.state == state else '' }}>{{ code }} - {{ state }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">State Code</label>
+              <input type="text" name="state_code" id="state_code" class="form-control" value="{{ customer.state_code if customer else '' }}" placeholder="e.g. 27" maxlength="3">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">🏠 Billing Address</div></div>
+        <div class="card-body">
+          <div class="form-group">
+            <input type="text" name="billing_address" class="form-control" value="{{ customer.billing_address if customer else '' }}" placeholder="Street address">
+          </div>
+          <div class="form-row col-3">
+            <input type="text" name="billing_city" class="form-control" value="{{ customer.billing_city if customer else '' }}" placeholder="City">
+            <input type="text" name="billing_state" class="form-control" value="{{ customer.billing_state if customer else '' }}" placeholder="State">
+            <input type="text" name="billing_pincode" class="form-control" value="{{ customer.billing_pincode if customer else '' }}" placeholder="Pincode">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">🚚 Shipping Address</div></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.85rem;color:var(--text-muted);">
+              <input type="checkbox" id="sameAsBilling" style="accent-color:var(--accent);">
+              Same as billing address
+            </label>
+          </div>
+          <div class="form-group">
+            <input type="text" name="shipping_address" id="ship_addr" class="form-control" value="{{ customer.shipping_address if customer else '' }}" placeholder="Street address">
+          </div>
+          <div class="form-row col-3">
+            <input type="text" name="shipping_city" id="ship_city" class="form-control" value="{{ customer.shipping_city if customer else '' }}" placeholder="City">
+            <input type="text" name="shipping_state" id="ship_state" class="form-control" value="{{ customer.shipping_state if customer else '' }}" placeholder="State">
+            <input type="text" name="shipping_pincode" id="ship_pin" class="form-control" value="{{ customer.shipping_pincode if customer else '' }}" placeholder="Pincode">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Financial -->
+    <div>
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">💰 Financial Details</div></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Opening Balance (₹)</label>
+            <input type="number" name="opening_balance" class="form-control" value="{{ customer.opening_balance if customer else 0 }}" step="0.01">
+            <div class="form-help">Amount this customer owes you at start</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Credit Limit (₹)</label>
+            <input type="number" name="credit_limit" class="form-control" value="{{ customer.credit_limit if customer else 0 }}" step="0.01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Terms (days)</label>
+            <select name="payment_terms" class="form-control">
+              {% for days in [0, 7, 15, 30, 45, 60, 90] %}
+              <option value="{{ days }}" {{ 'selected' if (customer and customer.payment_terms == days) or (not customer and days == 30) else '' }}>
+                {{ 'Immediate' if days == 0 else 'Net ' + days|string + ' days' }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">📝 Notes</div></div>
+        <div class="card-body">
+          <textarea name="notes" class="form-control" rows="4" placeholder="Internal notes about this customer...">{{ customer.notes if customer else '' }}</textarea>
+        </div>
+      </div>
+
+      <div class="d-flex gap-12">
+        <button type="submit" class="btn btn-primary" style="flex:1;justify-content:center;">
+          💾 {{ 'Update Customer' if customer else 'Add Customer' }}
+        </button>
+        <a href="{{ url_for('customers.list') }}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-fill state code from state dropdown
+document.querySelector('[name=state]').addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  document.getElementById('state_code').value = opt.dataset.code || '';
+});
+
+// Same as billing checkbox
+document.getElementById('sameAsBilling').addEventListener('change', function() {
+  if (this.checked) {
+    document.getElementById('ship_addr').value = document.querySelector('[name=billing_address]').value;
+    document.getElementById('ship_city').value = document.querySelector('[name=billing_city]').value;
+    document.getElementById('ship_state').value = document.querySelector('[name=billing_state]').value;
+    document.getElementById('ship_pin').value = document.querySelector('[name=billing_pincode]').value;
+  }
+});
+</script>
+{% endblock %}

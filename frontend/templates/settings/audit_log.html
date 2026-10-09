@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Security Audit Log{% endblock %}
+{% block page_title %}🔐 Security Audit Log{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Security Audit Log</div>
+    <div class="page-subtitle">Track all logins, actions and security events</div>
+  </div>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+  <div class="stat-card" style="--accent-color:#10b981;--accent-bg:rgba(16,185,129,0.1);">
+    <div class="stat-icon">✅</div>
+    <div class="stat-value">{{ logs|selectattr('status','eq','success')|list|length }}</div>
+    <div class="stat-label">Successful</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#ef4444;--accent-bg:rgba(239,68,68,0.1);">
+    <div class="stat-icon">❌</div>
+    <div class="stat-value">{{ logs|selectattr('status','eq','failure')|list|length }}</div>
+    <div class="stat-label">Failed Attempts</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#6366f1;--accent-bg:rgba(99,102,241,0.1);">
+    <div class="stat-icon">🔑</div>
+    <div class="stat-value">{{ logs|selectattr('action','equalto','login_success')|list|length }}</div>
+    <div class="stat-label">Logins</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#f59e0b;--accent-bg:rgba(245,158,11,0.1);">
+    <div class="stat-icon">🔒</div>
+    <div class="stat-value">{{ logs|selectattr('action','equalto','login_blocked')|list|length }}</div>
+    <div class="stat-label">Lockouts</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Recent Events (Last 200)</div>
+  </div>
+  {% if logs %}
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Action</th>
+          <th>User / Resource</th>
+          <th>IP Address</th>
+          <th>Status</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td style="font-size:0.8rem;white-space:nowrap;color:var(--text-muted);">
+            {{ log.timestamp.strftime('%d %b %Y') }}<br>
+            <span style="font-weight:600;">{{ log.timestamp.strftime('%H:%M:%S') }}</span>
+          </td>
+          <td>
+            <span style="font-size:0.82rem;font-weight:600;">
+              {% if log.action == 'login_success' %}🔑 Login
+              {% elif log.action == 'login_failed' %}❌ Failed Login
+              {% elif log.action == 'login_blocked' %}🔒 Blocked
+              {% elif log.action == 'logout' %}🚪 Logout
+              {% elif log.action == 'google_login' %}🌐 Google Login
+              {% elif log.action == 'google_register' %}🌐 Google Register
+              {% elif log.action == 'register' %}🆕 Register
+              {% elif log.action == 'password_reset_request' %}📧 Reset Request
+              {% elif log.action == 'password_reset_success' %}✅ Password Reset
+              {% else %}{{ log.action | replace('_',' ') | title }}
+              {% endif %}
+            </span>
+          </td>
+          <td>
+            <div style="font-size:0.85rem;">{{ log.resource or '—' }}</div>
+            {% if log.user %}<div style="font-size:0.75rem;color:var(--text-muted);">{{ log.user.name }}</div>{% endif %}
+          </td>
+          <td>
+            <code style="font-size:0.78rem;color:var(--text-muted);">{{ log.ip_address or '—' }}</code>
+          </td>
+          <td>
+            {% if log.status == 'success' %}
+              <span class="badge badge-success">✓ Success</span>
+            {% elif log.status == 'failure' %}
+              <span class="badge badge-danger">✗ Failure</span>
+            {% else %}
+              <span class="badge">{{ log.status }}</span>
+            {% endif %}
+          </td>
+          <td style="font-size:0.78rem;color:var(--text-muted);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ log.details or '' }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">No audit events yet</div>
+    <div class="empty-desc">Login and security events will appear here</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

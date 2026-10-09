@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Vendor Ledger — {{ vendor.name }}{% endblock %}
+{% block page_title %}📒 Vendor Ledger{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ vendor.name }}</div>
+    <div class="page-subtitle">{% if vendor.gstin %}GSTIN: {{ vendor.gstin }}{% endif %}</div>
+  </div>
+  <a href="{{ url_for('vendors.list') }}" class="btn btn-secondary">← Vendors</a>
+</div>
+
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+  <div class="stat-card" style="--accent-color:#6366f1;--accent-bg:rgba(99,102,241,0.1);">
+    <div class="stat-icon">📦</div>
+    <div class="stat-value">{{ format_currency(total_purchases) }}</div>
+    <div class="stat-label">Total Purchases</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#10b981;--accent-bg:rgba(16,185,129,0.1);">
+    <div class="stat-icon">✅</div>
+    <div class="stat-value">{{ format_currency(total_paid) }}</div>
+    <div class="stat-label">Total Paid</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#ef4444;--accent-bg:rgba(239,68,68,0.1);">
+    <div class="stat-icon">⚠️</div>
+    <div class="stat-value">{{ format_currency(closing_balance) }}</div>
+    <div class="stat-label">Balance Payable</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><div class="card-title">Transaction History</div></div>
+  {% if entries %}
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Type</th><th>Reference</th><th class="text-right">Debit</th><th class="text-right">Credit (Paid)</th><th class="text-right">Balance</th></tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr>
+          <td>{{ e.date.strftime('%d %b %Y') }}</td>
+          <td>
+            {% if e.type == 'purchase_order' %}<span class="badge badge-info">Purchase Order</span>
+            {% else %}<span class="badge badge-success">Expense/Payment</span>{% endif %}
+          </td>
+          <td>{{ e.ref }}</td>
+          <td class="text-right">{% if e.debit > 0 %}{{ format_currency(e.debit) }}{% else %}—{% endif %}</td>
+          <td class="text-right" style="color:#10b981;">{% if e.credit > 0 %}{{ format_currency(e.credit) }}{% else %}—{% endif %}</td>
+          <td class="text-right fw-700">{{ format_currency(e.balance) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--accent-glow);font-weight:700;">
+          <td colspan="3">Balance Payable</td>
+          <td class="text-right">{{ format_currency(total_purchases) }}</td>
+          <td class="text-right" style="color:#10b981;">{{ format_currency(total_paid) }}</td>
+          <td class="text-right" style="color:var(--danger);">{{ format_currency(closing_balance) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-icon">📒</div><div class="empty-title">No transactions yet</div></div>
+  {% endif %}
+</div>
+{% endblock %}

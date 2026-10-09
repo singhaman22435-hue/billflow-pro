@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Payslips — {{ month }}{% endblock %}
+{% block page_title %}Payroll{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">📄 Payslips</div>
+    <div class="page-subtitle">Month: {{ month }}</div>
+  </div>
+  <div class="d-flex gap-8">
+    <input type="month" class="form-control" value="{{ month }}" style="width:160px;" onchange="window.location.href='/payroll/payslips?month='+this.value">
+    <a href="{{ url_for('payroll.run_payroll') }}" class="btn btn-primary">▶️ Run Payroll</a>
+  </div>
+</div>
+
+{% if payslips %}
+<!-- Stats -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="padding:16px;text-align:center;">
+    <div style="font-size:1.6rem;font-weight:800;color:var(--accent);">{{ payslips|length }}</div>
+    <div class="text-muted" style="font-size:0.82rem;">Payslips Generated</div>
+  </div>
+  <div class="card" style="padding:16px;text-align:center;">
+    <div style="font-size:1.2rem;font-weight:800;color:var(--success);">₹{{ format_currency(total_gross) }}</div>
+    <div class="text-muted" style="font-size:0.82rem;">Total Gross</div>
+  </div>
+  <div class="card" style="padding:16px;text-align:center;">
+    <div style="font-size:1.2rem;font-weight:800;color:var(--accent);">₹{{ format_currency(total_net) }}</div>
+    <div class="text-muted" style="font-size:0.82rem;">Total Net Payout</div>
+  </div>
+  <div class="card" style="padding:16px;text-align:center;">
+    <div style="font-size:1.2rem;font-weight:800;color:var(--warning);">₹{{ format_currency(total_pf) }}</div>
+    <div class="text-muted" style="font-size:0.82rem;">Total PF</div>
+  </div>
+</div>
+
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr><th>Payslip No</th><th>Employee</th><th class="text-right">Gross</th><th class="text-right">Deductions</th><th class="text-right">Net</th><th>Days</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for ps in payslips %}
+      <tr>
+        <td style="color:var(--accent);font-weight:700;">{{ ps.payslip_no }}</td>
+        <td>
+          <div class="fw-600">{{ ps.employee.name }}</div>
+          <div class="text-muted" style="font-size:0.78rem;">{{ ps.employee.designation or '' }}</div>
+        </td>
+        <td class="text-right amt" style="color:var(--success);">{{ format_currency(ps.gross_earnings) }}</td>
+        <td class="text-right" style="color:var(--danger);">{{ format_currency(ps.total_deductions) }}</td>
+        <td class="text-right amt fw-700" style="color:var(--accent);">{{ format_currency(ps.net_salary) }}</td>
+        <td class="text-center">{{ ps.paid_days }}/{{ ps.working_days }}</td>
+        <td>
+          {% if ps.paid %}
+          <span class="badge badge-success">✅ Paid</span>
+          {% else %}
+          <span class="badge badge-warning">⏳ Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="table-actions">
+            <a href="{{ url_for('payroll.view_payslip', id=ps.id) }}" class="btn btn-sm btn-secondary">View</a>
+            <a href="{{ url_for('payroll.download_payslip_pdf', id=ps.id) }}" class="btn btn-sm btn-outline">📄 PDF</a>
+            {% if not ps.paid %}
+            <form method="POST" action="{{ url_for('payroll.mark_paid', id=ps.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-success" data-confirm="Mark as paid?">✅ Mark Paid</button>
+            </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">📄</div>
+    <div class="empty-title">No payslips for {{ month }}</div>
+    <a href="{{ url_for('payroll.run_payroll') }}" class="btn btn-primary">▶️ Run Payroll</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% block title %}Edit Invoice {{ invoice.invoice_no }}{% endblock %}
+{% block page_title %}Edit Invoice{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Edit Invoice</div>
+    <div class="page-subtitle">Invoice No: <strong>{{ invoice.invoice_no }}</strong></div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('invoices.view', id=invoice.id) }}" class="btn btn-secondary">← Back</a>
+    <button type="button" class="btn btn-primary" id="saveBtn" onclick="submitInvoice('draft')">Update Draft</button>
+    <button type="button" class="btn btn-success" onclick="submitInvoice('sent')">Update & Send →</button>
+  </div>
+</div>
+
+<form id="invoiceForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="invoice-builder">
+    <!-- LEFT: Main Form -->
+    <div>
+      <!-- Customer & Dates -->
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">📋 Invoice Details</div></div>
+        <div class="card-body">
+          <div class="form-row col-2">
+            <div class="form-group">
+              <label class="form-label">Customer <span class="required">*</span></label>
+              <div class="autocomplete-wrapper">
+                <input type="text" id="customerSearch" class="form-control" placeholder="Search customer..." autocomplete="off" value="{{ invoice.customer.name }}">
+                <div class="autocomplete-dropdown" id="customerDropdown"></div>
+              </div>
+              <input type="hidden" id="customer_id" name="customer_id" value="{{ invoice.customer_id }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Invoice Type</label>
+              <select name="invoice_type" id="invoice_type" class="form-control">
+                <option value="tax_invoice" {{ 'selected' if invoice.invoice_type == 'tax_invoice' }}>Tax Invoice</option>
+                <option value="proforma" {{ 'selected' if invoice.invoice_type == 'proforma' }}>Proforma Invoice</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row col-3">
+            <div class="form-group">
+              <label class="form-label">Invoice Date <span class="required">*</span></label>
+              <input type="date" id="invoice_date" name="invoice_date" class="form-control" value="{{ invoice.invoice_date.isoformat() }}" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Due Date</label>
+              <input type="date" id="due_date" name="due_date" class="form-control" value="{{ invoice.due_date.isoformat() if invoice.due_date else '' }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Place of Supply</label>
+              <input type="text" id="place_of_supply" class="form-control" placeholder="e.g. Maharashtra" value="{{ invoice.place_of_supply or '' }}">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="is_igst" {% if invoice.is_igst %}checked{% endif %}> Interstate Sale (Apply IGST instead of CGST+SGST)
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Line Items -->
+      <div class="card mb-16">
+        <div class="card-header">
+          <div class="card-title">📦 Line Items</div>
+          <button type="button" class="btn btn-sm btn-outline" onclick="addLineItem()">+ Add Item</button>
+        </div>
+        <div class="table-wrapper" style="border:none;border-radius:0;">
+          <table id="lineItemsTable">
+            <thead>
+              <tr>
+                <th style="width:200px;">Item / Description</th>
+                <th>HSN/SAC</th>
+                <th style="width:70px;">Qty</th>
+                <th style="width:60px;">Unit</th>
+                <th style="width:100px;">Rate</th>
+                <th style="width:70px;">Disc%</th>
+                <th style="width:70px;">GST%</th>
+                <th style="width:110px;">Amount</th>
+                <th style="width:40px;"></th>
+              </tr>
+            </thead>
+            <tbody id="lineItemsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Summary -->
+    <div>
+      <div class="card mb-16" style="position:sticky;top:20px;">
+        <div class="card-header"><div class="card-title">💰 Summary</div></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:12px;">
+          <div class="total-row"><span class="total-label">Subtotal</span><span class="total-value amt" id="s_subtotal">₹0.00</span></div>
+          <div class="total-row"><span class="total-label">Discount</span><span class="total-value amt" style="color:var(--success);" id="s_discount">-₹0.00</span></div>
+          <div class="total-row"><span class="total-label">Taxable</span><span class="total-value amt" id="s_taxable">₹0.00</span></div>
+          <div id="cgst_row" class="total-row"><span class="total-label">CGST</span><span class="total-value amt" id="s_cgst">₹0.00</span></div>
+          <div id="sgst_row" class="total-row"><span class="total-label">SGST</span><span class="total-value amt" id="s_sgst">₹0.00</span></div>
+          <div id="igst_row" class="total-row" style="display:none;"><span class="total-label">IGST</span><span class="total-value amt" id="s_igst">₹0.00</span></div>
+          <hr style="border-color:var(--border);margin:4px 0;">
+          <div class="total-row"><span class="total-label fw-700" style="font-size:1rem;">Grand Total</span><span class="total-value amt fw-700" style="font-size:1.2rem;color:var(--accent);" id="s_grand">₹0.00</span></div>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-header"><div class="card-title">📝 Notes & Terms</div></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea id="notes" class="form-control" rows="3" placeholder="Any notes for customer...">{{ invoice.notes or '' }}</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Terms & Conditions</label>
+            <textarea id="terms" class="form-control" rows="3" placeholder="Payment terms...">{{ invoice.terms or '' }}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ITEMS_DB = {{ items | tojson }};
+const EXISTING_ITEMS = {{ existing_items | tojson }};
+let rowCount = 0;
+
+// Customer autocomplete
+const customerSearch = document.getElementById('customerSearch');
+const customerDropdown = document.getElementById('customerDropdown');
+const customers = [{% for c in customers %}{ id: {{ c.id }}, name: "{{ c.name }}", gstin: "{{ c.gstin or '' }}", state: "{{ c.billing_state or '' }}" },{% endfor %}];
+
+customerSearch.addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  const matches = customers.filter(c => c.name.toLowerCase().includes(q));
+  if (matches.length && q) {
+    customerDropdown.style.display = 'block';
+    customerDropdown.innerHTML = matches.slice(0,8).map(c =>
+      `<div class="autocomplete-item" onclick="selectCustomer(${c.id},'${c.name.replace(/'/g,"\\'")}','${c.state}')">${c.name}${c.gstin ? ' — ' + c.gstin : ''}</div>`
+    ).join('');
+  } else {
+    customerDropdown.style.display = 'none';
+  }
+});
+
+function selectCustomer(id, name, state) {
+  document.getElementById('customer_id').value = id;
+  customerSearch.value = name;
+  customerDropdown.style.display = 'none';
+}
+document.addEventListener('click', e => { if (!e.target.closest('.autocomplete-wrapper')) customerDropdown.style.display = 'none'; });
+
+// IGST toggle
+document.getElementById('is_igst').addEventListener('change', function() {
+  const igst = this.checked;
+  document.getElementById('igst_row').style.display = igst ? '' : 'none';
+  document.getElementById('cgst_row').style.display = igst ? 'none' : '';
+  document.getElementById('sgst_row').style.display = igst ? 'none' : '';
+  recalcAll();
+});
+
+function addLineItem(prefill) {
+  rowCount++;
+  const idx = rowCount;
+  const tr = document.createElement('tr');
+  tr.id = `row_${idx}`;
+  tr.innerHTML = `
+    <td>
+      <input type="text" class="form-control item-search" style="margin-bottom:4px;" placeholder="Search or type..." autocomplete="off" oninput="searchItem(this, ${idx})" value="${prefill ? prefill.description : ''}">
+      <div class="autocomplete-dropdown" id="itemDrop_${idx}"></div>
+      <input type="hidden" id="item_id_${idx}" value="${prefill ? (prefill.item_id || '') : ''}">
+    </td>
+    <td><input type="text" class="form-control" id="hsn_${idx}" value="${prefill ? prefill.hsn_sac : ''}"></td>
+    <td><input type="number" class="form-control" id="qty_${idx}" value="${prefill ? prefill.qty : 1}" min="0.01" step="0.01" oninput="recalcRow(${idx})"></td>
+    <td><input type="text" class="form-control" id="unit_${idx}" value="${prefill ? prefill.unit : 'Nos'}"></td>
+    <td><input type="number" class="form-control" id="rate_${idx}" value="${prefill ? prefill.rate : 0}" step="0.01" oninput="recalcRow(${idx})"></td>
+    <td><input type="number" class="form-control" id="disc_${idx}" value="${prefill ? prefill.discount_pct : 0}" min="0" max="100" step="0.01" oninput="recalcRow(${idx})"></td>
+    <td><input type="number" class="form-control" id="gst_${idx}" value="${prefill ? prefill.gst_rate : 18}" step="0.01" oninput="recalcRow(${idx})"></td>
+    <td><span class="amt" id="amt_${idx}">₹0.00</span></td>
+    <td><button type="button" onclick="removeRow(${idx})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:1.1rem;">✕</button></td>
+  `;
+  document.getElementById('lineItemsBody').appendChild(tr);
+  recalcRow(idx);
+}
+
+function removeRow(idx) {
+  document.getElementById(`row_${idx}`)?.remove();
+  recalcAll();
+}
+
+function searchItem(input, idx) {
+  const q = input.value.toLowerCase();
+  const drop = document.getElementById(`itemDrop_${idx}`);
+  const matches = ITEMS_DB.filter(i => i.name.toLowerCase().includes(q));
+  if (matches.length && q) {
+    drop.style.display = 'block';
+    drop.innerHTML = matches.slice(0,8).map(i =>
+      `<div class="autocomplete-item" onclick="selectItem(${idx}, ${i.id}, '${i.name.replace(/'/g,"\\'")}', '${i.hsn_sac}', ${i.selling_price}, ${i.tax_rate}, ${i.cess_rate}, '${i.unit}')">${i.name}</div>`
+    ).join('');
+  } else { drop.style.display = 'none'; }
+}
+
+function selectItem(idx, id, name, hsn, price, tax, cess, unit) {
+  document.querySelector(`#row_${idx} .item-search`).value = name;
+  document.getElementById(`item_id_${idx}`).value = id;
+  document.getElementById(`hsn_${idx}`).value = hsn;
+  document.getElementById(`rate_${idx}`).value = price;
+  document.getElementById(`gst_${idx}`).value = tax;
+  document.getElementById(`unit_${idx}`).value = unit;
+  document.getElementById(`itemDrop_${idx}`).style.display = 'none';
+  recalcRow(idx);
+}
+
+function recalcRow(idx) {
+  const qty = parseFloat(document.getElementById(`qty_${idx}`)?.value) || 0;
+  const rate = parseFloat(document.getElementById(`rate_${idx}`)?.value) || 0;
+  const disc = parseFloat(document.getElementById(`disc_${idx}`)?.value) || 0;
+  const amount = qty * rate * (1 - disc/100);
+  const el = document.getElementById(`amt_${idx}`);
+  if (el) el.textContent = '₹' + amount.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+  recalcAll();
+}
+
+function recalcAll() {
+  const isIgst = document.getElementById('is_igst').checked;
+  let subtotal=0, discount=0, taxable=0, cgst=0, sgst=0, igst=0;
+  document.querySelectorAll('#lineItemsBody tr').forEach(tr => {
+    const idx = tr.id.replace('row_','');
+    const qty = parseFloat(document.getElementById(`qty_${idx}`)?.value)||0;
+    const rate = parseFloat(document.getElementById(`rate_${idx}`)?.value)||0;
+    const disc = parseFloat(document.getElementById(`disc_${idx}`)?.value)||0;
+    const gst = parseFloat(document.getElementById(`gst_${idx}`)?.value)||0;
+    const gross = qty*rate;
+    const discAmt = gross*(disc/100);
+    const taxableAmt = gross - discAmt;
+    const taxAmt = taxableAmt*(gst/100);
+    subtotal += gross; discount += discAmt; taxable += taxableAmt;
+    if (isIgst) igst += taxAmt;
+    else { cgst += taxAmt/2; sgst += taxAmt/2; }
+  });
+  const fmt = v => '₹'+v.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('s_subtotal').textContent = fmt(subtotal);
+  document.getElementById('s_discount').textContent = '-'+fmt(discount);
+  document.getElementById('s_taxable').textContent = fmt(taxable);
+  document.getElementById('s_cgst').textContent = fmt(cgst);
+  document.getElementById('s_sgst').textContent = fmt(sgst);
+  document.getElementById('s_igst').textContent = fmt(igst);
+  document.getElementById('s_grand').textContent = fmt(Math.round(taxable + cgst + sgst + igst));
+}
+
+function submitInvoice(status) {
+  const rows = [];
+  document.querySelectorAll('#lineItemsBody tr').forEach(tr => {
+    const idx = tr.id.replace('row_','');
+    rows.push({
+      item_id: document.getElementById(`item_id_${idx}`)?.value || null,
+      description: tr.querySelector('.item-search')?.value || '',
+      hsn_sac: document.getElementById(`hsn_${idx}`)?.value || '',
+      qty: parseFloat(document.getElementById(`qty_${idx}`)?.value)||1,
+      unit: document.getElementById(`unit_${idx}`)?.value || 'Nos',
+      rate: parseFloat(document.getElementById(`rate_${idx}`)?.value)||0,
+      discount_pct: parseFloat(document.getElementById(`disc_${idx}`)?.value)||0,
+      gst_rate: parseFloat(document.getElementById(`gst_${idx}`)?.value)||0,
+      cess_rate: 0
+    });
+  });
+
+  const payload = {
+    customer_id: document.getElementById('customer_id').value,
+    invoice_type: document.getElementById('invoice_type').value,
+    invoice_date: document.getElementById('invoice_date').value,
+    due_date: document.getElementById('due_date').value || null,
+    place_of_supply: document.getElementById('place_of_supply').value,
+    is_igst: document.getElementById('is_igst').checked,
+    notes: document.getElementById('notes').value,
+    terms: document.getElementById('terms').value,
+    status: status,
+    items: rows
+  };
+
+  document.getElementById('saveBtn').disabled = true;
+  document.getElementById('saveBtn').textContent = 'Saving...';
+
+  fetch('/invoices/{{ invoice.id }}/edit', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('[name=csrf_token]').value
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      window.location.href = '/invoices/' + data.invoice_id;
+    } else {
+      alert('Error: ' + (data.error || 'Could not update invoice.'));
+      document.getElementById('saveBtn').disabled = false;
+      document.getElementById('saveBtn').textContent = 'Update Draft';
+    }
+  })
+  .catch(e => {
+    alert('Network error. Please try again.');
+    document.getElementById('saveBtn').disabled = false;
+    document.getElementById('saveBtn').textContent = 'Update Draft';
+  });
+}
+
+// Pre-fill existing items on load
+EXISTING_ITEMS.forEach(item => addLineItem(item));
+if (EXISTING_ITEMS.length === 0) addLineItem();
+
+// Set IGST visibility
+const isIgstChecked = document.getElementById('is_igst').checked;
+document.getElementById('igst_row').style.display = isIgstChecked ? '' : 'none';
+document.getElementById('cgst_row').style.display = isIgstChecked ? 'none' : '';
+document.getElementById('sgst_row').style.display = isIgstChecked ? 'none' : '';
+</script>
+{% endblock %}

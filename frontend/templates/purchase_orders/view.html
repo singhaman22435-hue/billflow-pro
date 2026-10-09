@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}{{ po.po_no }}{% endblock %}
+{% block page_title %}Purchase Order{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ po.po_no }}</div>
+    <div class="page-subtitle">{{ po.vendor.name }} · {{ po.po_date.strftime('%d %b %Y') }}</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('purchase_orders.list') }}" class="btn btn-secondary">← Back</a>
+    <a href="{{ url_for('purchase_orders.download_pdf', id=po.id, download=1) }}" class="btn btn-outline" target="_blank">📄 Download PDF</a>
+    <a href="{{ url_for('purchase_orders.download_pdf', id=po.id) }}" class="btn btn-outline" target="_blank">🖨️ Print / View PDF</a>
+    {% if po.status == 'draft' %}
+    <form method="POST" action="{{ url_for('purchase_orders.update_status', id=po.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="status" value="sent">
+      <button class="btn btn-primary">📤 Mark as Sent</button>
+    </form>
+    {% elif po.status == 'sent' %}
+    <form method="POST" action="{{ url_for('purchase_orders.update_status', id=po.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="status" value="received">
+      <button class="btn btn-success">✅ Mark Received</button>
+    </form>
+    {% elif po.status == 'received' %}
+    <form method="POST" action="{{ url_for('purchase_orders.convert_to_expense', id=po.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-primary" title="Record this as an Expense">💸 Convert to Expense</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-2" style="gap:20px;margin-bottom:20px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">Vendor Details</div><span class="badge badge-{{ 'success' if po.status == 'received' else ('info' if po.status == 'sent' else 'draft') }}">{{ po.status }}</span></div>
+    <div class="card-body">
+      <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">{{ po.vendor.name }}</div>
+      {% if po.vendor.gstin %}<div class="text-muted" style="font-size:0.82rem;">GSTIN: {{ po.vendor.gstin }}</div>{% endif %}
+      {% if po.vendor.address %}<div class="text-muted" style="font-size:0.82rem;">{{ po.vendor.address }}, {{ po.vendor.city or '' }}</div>{% endif %}
+      {% if po.vendor.phone %}<div class="text-muted" style="font-size:0.82rem;">📞 {{ po.vendor.phone }}</div>{% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">PO Summary</div></div>
+    <div class="card-body">
+      <div class="total-row"><span class="total-label">PO No</span><span class="fw-600" style="color:var(--accent);">{{ po.po_no }}</span></div>
+      <div class="total-row"><span class="total-label">PO Date</span><span>{{ po.po_date.strftime('%d %b %Y') }}</span></div>
+      <div class="total-row"><span class="total-label">Delivery Date</span><span>{{ po.delivery_date.strftime('%d %b %Y') if po.delivery_date else '—' }}</span></div>
+      <div class="total-row grand"><span>Grand Total</span><span class="amt">{{ format_currency(po.grand_total) }}</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><div class="card-title">Items Ordered</div></div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Description</th><th>HSN</th><th class="text-right">Qty</th><th>Unit</th><th class="text-right">Rate</th><th class="text-right">Taxable</th><th class="text-right">GST</th><th class="text-right">Total</th></tr>
+      </thead>
+      <tbody>
+        {% for item in po.items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="fw">{{ item.description }}</td>
+          <td>{{ item.hsn_sac or '—' }}</td>
+          <td class="text-right">{{ item.qty }}</td>
+          <td>{{ item.unit }}</td>
+          <td class="text-right amt">{{ format_currency(item.rate) }}</td>
+          <td class="text-right amt">{{ format_currency(item.taxable_amount) }}</td>
+          <td class="text-right">{{ format_currency(item.cgst_amount|float + item.sgst_amount|float + item.igst_amount|float) }}</td>
+          <td class="text-right amt fw">{{ format_currency(item.taxable_amount|float + item.cgst_amount|float + item.sgst_amount|float + item.igst_amount|float) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--accent-glow);">
+          <td colspan="8" class="text-right fw-700" style="color:var(--accent);">Grand Total</td>
+          <td class="text-right amt fw-700" style="color:var(--accent);">{{ format_currency(po.grand_total) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endblock %}

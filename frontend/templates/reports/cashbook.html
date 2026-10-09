@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}Cash Book{% endblock %}
+{% block page_title %}Reports{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">Cash Book</div></div>
+</div>
+
+<div class="tabs mb-16">
+  <a href="{{ url_for('reports.sales') }}" class="tab-item">Sales</a>
+  <a href="{{ url_for('reports.pnl') }}" class="tab-item">P&L</a>
+  <a href="{{ url_for('reports.cashbook') }}" class="tab-item active">Cash Book</a>
+  <a href="{{ url_for('reports.outstanding') }}" class="tab-item">Outstanding</a>
+  <a href="{{ url_for('reports.gstr1') }}" class="tab-item">GSTR-1</a>
+</div>
+
+<div class="card mb-16">
+  <div class="card-body">
+    <form method="GET" class="d-flex gap-12 align-center">
+      <div class="form-group" style="margin:0;">
+        <label class="form-label">Month</label>
+        <input type="month" name="month" class="form-control" value="{{ month }}">
+      </div>
+      <button type="submit" class="btn btn-primary" style="margin-top:18px;">Apply</button>
+    </form>
+  </div>
+</div>
+
+<!-- Summary -->
+<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+  <div class="stat-card" style="--accent-color:#10b981;">
+    <div class="stat-icon">💰</div>
+    <div class="stat-value" style="font-size:1.1rem;">{{ format_currency(total_in) }}</div>
+    <div class="stat-label">Money In</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#ef4444;">
+    <div class="stat-icon">💸</div>
+    <div class="stat-value" style="font-size:1.1rem;">{{ format_currency(total_out) }}</div>
+    <div class="stat-label">Money Out</div>
+  </div>
+  <div class="stat-card" style="--accent-color:{{ '#10b981' if closing_balance >= 0 else '#ef4444' }};">
+    <div class="stat-icon">🏦</div>
+    <div class="stat-value" style="font-size:1.1rem;color:var(--accent-color);">{{ format_currency(closing_balance) }}</div>
+    <div class="stat-label">Closing Balance</div>
+  </div>
+</div>
+
+{% if ledger %}
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Narration</th>
+        <th>Mode</th>
+        <th>Reference</th>
+        <th class="text-right" style="color:var(--success);">Credit (+)</th>
+        <th class="text-right" style="color:var(--danger);">Debit (−)</th>
+        <th class="text-right">Balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in ledger %}
+      <tr style="{{ 'background:rgba(16,185,129,0.04)' if entry.type == 'in' else 'background:rgba(239,68,68,0.04)' }}">
+        <td style="white-space:nowrap;">{{ entry.date.strftime('%d %b %Y') }}</td>
+        <td>
+          <span style="margin-right:6px;">{{ '↑' if entry.type == 'in' else '↓' }}</span>
+          {{ entry.narration }}
+        </td>
+        <td><span class="badge badge-info">{{ entry.mode }}</span></td>
+        <td style="font-size:0.8rem;color:var(--text-muted);">{{ entry.ref or '—' }}</td>
+        <td class="text-right amt fw" style="color:{{ 'var(--success)' if entry.credit > 0 else 'var(--text-muted)' }};">
+          {{ format_currency(entry.credit) if entry.credit > 0 else '—' }}
+        </td>
+        <td class="text-right amt fw" style="color:{{ 'var(--danger)' if entry.debit > 0 else 'var(--text-muted)' }};">
+          {{ format_currency(entry.debit) if entry.debit > 0 else '—' }}
+        </td>
+        <td class="text-right amt fw-600" style="color:{{ 'var(--success)' if entry.balance >= 0 else 'var(--danger)' }};">
+          {{ format_currency(entry.balance) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:var(--bg-secondary);font-weight:700;">
+        <td colspan="4">Closing Balance</td>
+        <td class="text-right amt" style="color:var(--success);">{{ format_currency(total_in) }}</td>
+        <td class="text-right amt" style="color:var(--danger);">{{ format_currency(total_out) }}</td>
+        <td class="text-right amt" style="color:{{ 'var(--success)' if closing_balance >= 0 else 'var(--danger)' }};">{{ format_currency(closing_balance) }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">📒</div>
+    <div class="empty-title">No transactions this month</div>
+    <div class="empty-desc">Record payments and expenses to see them here</div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}Inventory{% endblock %}
+{% block page_title %}📦 Inventory & Stock{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">Inventory Management</div>
+    <div class="page-subtitle">Track product stock levels and get low stock alerts</div>
+  </div>
+  <a href="{{ url_for('items.list') }}" class="btn btn-secondary">⚙️ Manage Products</a>
+</div>
+
+<!-- Alert Cards -->
+{% if out_of_stock %}
+<div class="alert" style="background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);border-radius:12px;padding:14px 18px;margin-bottom:16px;color:var(--danger,#ef4444);">
+  🚨 <strong>{{ out_of_stock|length }} product(s) out of stock!</strong>
+  {% for i in out_of_stock %} {{ i.name }}{% if not loop.last %},{% endif %}{% endfor %}
+</div>
+{% endif %}
+{% if low_stock %}
+<div class="alert" style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:14px 18px;margin-bottom:16px;color:#f59e0b;">
+  ⚠️ <strong>{{ low_stock|length }} product(s) low on stock!</strong>
+  {% for i in low_stock %} {{ i.name }} ({{ i.current_stock }} {{ i.unit }}){% if not loop.last %},{% endif %}{% endfor %}
+</div>
+{% endif %}
+
+{% if items %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Tracked Products ({{ items|length }})</div>
+  </div>
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th class="text-right">Current Stock</th>
+          <th class="text-right">Min Level</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td class="fw">{{ item.name }}<div style="font-size:0.78rem;color:var(--text-muted);">{{ item.unit }}</div></td>
+          <td class="text-right fw" style="font-size:1.05rem;font-weight:700;{% if item.stock_status == 'out_of_stock' %}color:var(--danger);{% elif item.stock_status == 'low_stock' %}color:#f59e0b;{% else %}color:var(--success);{% endif %}">
+            {{ item.current_stock }}
+          </td>
+          <td class="text-right">{{ item.min_stock_level }}</td>
+          <td>{{ item.warehouse_location or '—' }}</td>
+          <td>
+            {% if item.stock_status == 'out_of_stock' %}
+              <span class="badge badge-danger">Out of Stock</span>
+            {% elif item.stock_status == 'low_stock' %}
+              <span class="badge badge-warning">Low Stock</span>
+            {% else %}
+              <span class="badge badge-success">In Stock</span>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="openAdjust({{ item.id }}, '{{ item.name }}', {{ item.current_stock }}, '{{ item.unit }}')">
+              Adjust Stock
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">📦</div>
+    <div class="empty-title">No inventory tracked yet</div>
+    <div class="empty-desc">Go to Items/Products and enable inventory tracking for each product</div>
+    <a href="{{ url_for('items.list') }}" class="btn btn-primary">→ Go to Products</a>
+  </div>
+</div>
+{% endif %}
+
+<!-- Adjust Stock Modal -->
+<div class="modal-overlay" id="adjustModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <div class="modal-title">📦 Adjust Stock — <span id="adjustItemName"></span></div>
+      <button class="modal-close" onclick="document.getElementById('adjustModal').classList.remove('active')">✕</button>
+    </div>
+    <form method="POST" id="adjustForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Current Stock</label>
+          <div id="currentStockDisplay" style="font-size:1.4rem;font-weight:700;color:var(--accent);"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Adjustment Type</label>
+          <select name="type" class="form-control" id="adjType">
+            <option value="add">➕ Add Stock (Purchase / Return)</option>
+            <option value="remove">➖ Remove Stock (Damage / Loss)</option>
+            <option value="set">🎯 Set Exact Quantity</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Quantity <span id="adjUnit"></span></label>
+          <input type="number" name="qty" class="form-control" min="0" step="0.001" required placeholder="0">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('adjustModal').classList.remove('active')">Cancel</button>
+        <button type="submit" class="btn btn-primary">✅ Update Stock</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openAdjust(id, name, stock, unit) {
+  document.getElementById('adjustItemName').textContent = name;
+  document.getElementById('currentStockDisplay').textContent = stock + ' ' + unit;
+  document.getElementById('adjUnit').textContent = '(' + unit + ')';
+  document.getElementById('adjustForm').action = '/inventory/' + id + '/adjust';
+  document.getElementById('adjustModal').classList.add('active');
+}
+</script>
+{% endblock %}

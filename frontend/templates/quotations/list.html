@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Quotations{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><div class="page-title">Quotations</div></div>
+  <a href="{{ url_for('quotations.create') }}" class="btn btn-primary">+ New Quotation</a>
+</div>
+
+{% if quotations %}
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr><th>Quotation No</th><th>Customer</th><th>Date</th><th>Valid Till</th><th class="text-right">Amount</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for q in quotations %}
+      <tr>
+        <td class="fw" style="color:var(--accent);">{{ q.quotation_no }}</td>
+        <td>{{ q.customer.name }}</td>
+        <td>{{ q.quotation_date.strftime('%d %b %Y') }}</td>
+        <td>{{ q.valid_till.strftime('%d %b %Y') if q.valid_till else '—' }}</td>
+        <td class="text-right amt fw">{{ format_currency(q.grand_total) }}</td>
+        <td><span class="badge badge-{{ 'success' if q.status == 'accepted' else ('info' if q.status == 'sent' else 'draft') }}">{{ q.status }}</span></td>
+        <td>
+          <div class="table-actions">
+            <a href="{{ url_for('quotations.view', id=q.id) }}" class="btn btn-sm btn-secondary">View</a>
+            <a href="{{ url_for('quotations.download_pdf', id=q.id, download=1) }}" class="btn btn-sm btn-outline" target="_blank">📄 PDF</a>
+            {% if q.status not in ['converted', 'rejected'] %}
+            <form method="POST" action="{{ url_for('quotations.convert_to_invoice', id=q.id) }}" style="display:inline;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-success" data-confirm="Convert to Invoice?">→ Invoice</button>
+            </form>
+            {% elif q.converted_invoice_id %}
+            <a href="{{ url_for('invoices.view', id=q.converted_invoice_id) }}" class="btn btn-sm btn-secondary">View Invoice</a>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% from 'components/pagination.html' import render_pagination %}
+{{ render_pagination(pagination, 'quotations.list') }}
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">No quotations yet</div>
+    <a href="{{ url_for('quotations.create') }}" class="btn btn-primary">+ Create Quotation</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

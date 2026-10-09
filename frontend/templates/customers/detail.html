@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Customer Detail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ customer.name }}</div>
+    <div class="page-subtitle">{{ customer.gstin or 'No GSTIN registered' }}</div>
+  </div>
+  <div class="d-flex gap-8">
+    <a href="{{ url_for('customers.list') }}" class="btn btn-secondary">← Back</a>
+    <a href="{{ url_for('customers.edit', id=customer.id) }}" class="btn btn-outline">✏️ Edit</a>
+    <a href="{{ url_for('invoices.create') }}" class="btn btn-primary">+ New Invoice</a>
+  </div>
+</div>
+
+<div class="grid-2" style="gap:24px;margin-bottom:24px;">
+  <div class="card">
+    <div class="card-header"><div class="card-title">Contact Information</div></div>
+    <div class="card-body">
+      <table style="width:100%;border:none;">
+        <tr><td class="form-label" style="width:120px;">Phone</td><td>{{ customer.phone or '—' }}</td></tr>
+        <tr><td class="form-label">Email</td><td>{{ customer.email or '—' }}</td></tr>
+        <tr><td class="form-label">GSTIN</td><td>{{ customer.gstin or '—' }}</td></tr>
+        <tr><td class="form-label">PAN</td><td>{{ customer.pan or '—' }}</td></tr>
+        <tr><td class="form-label">State</td><td>{{ customer.state or '—' }} ({{ customer.state_code or '—' }})</td></tr>
+        <tr><td class="form-label">Billing</td><td>{{ customer.billing_address or '—' }}, {{ customer.billing_city or '' }}</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div class="card-title">Financial Summary</div></div>
+    <div class="card-body">
+      <div class="total-row">
+        <span class="total-label">Total Sales</span>
+        <span class="amt fw" style="color:var(--accent);">{{ format_currency(invoices|sum(attribute='grand_total')) }}</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Total Paid</span>
+        <span class="amt" style="color:var(--success);">{{ format_currency(invoices|sum(attribute='amount_paid')) }}</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Outstanding</span>
+        <span class="amt fw-700" style="color:var(--warning);">{{ format_currency(customer.get_outstanding()) }}</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Credit Limit</span>
+        <span class="amt">{{ format_currency(customer.credit_limit) }}</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Payment Terms</span>
+        <span>Net {{ customer.payment_terms }} Days</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><div class="card-title">Invoice History</div></div>
+  {% if invoices %}
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr><th>Invoice No</th><th>Date</th><th>Due Date</th><th class="text-right">Amount</th><th class="text-right">Balance</th><th>Status</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr>
+          <td class="fw"><a href="{{ url_for('invoices.view', id=inv.id) }}" style="color:var(--accent);">{{ inv.invoice_no }}</a></td>
+          <td>{{ inv.invoice_date.strftime('%d %b %Y') }}</td>
+          <td>{{ inv.due_date.strftime('%d %b %Y') if inv.due_date else '—' }}</td>
+          <td class="text-right amt fw">{{ format_currency(inv.grand_total) }}</td>
+          <td class="text-right amt" style="color:{{ 'var(--danger)' if inv.balance_due > 0 else 'var(--success)' }};">{{ format_currency(inv.balance_due) }}</td>
+          <td><span class="badge badge-{{ inv.status }}">{{ inv.status }}</span></td>
+          <td><a href="{{ url_for('invoices.view', id=inv.id) }}" class="btn btn-sm btn-secondary">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🧾</div>
+    <div class="empty-title">No invoices for this customer</div>
+    <a href="{{ url_for('invoices.create') }}" class="btn btn-primary btn-sm">+ Create Invoice</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

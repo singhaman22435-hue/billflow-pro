@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Customer Ledger — {{ customer.name }}{% endblock %}
+{% block page_title %}📒 Customer Ledger{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="page-title">{{ customer.name }}</div>
+    <div class="page-subtitle">{{ customer.company_name or '' }} {% if customer.gstin %}• GSTIN: {{ customer.gstin }}{% endif %}</div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <a href="{{ url_for('customers.list') }}" class="btn btn-secondary">← Customers</a>
+    <a href="{{ url_for('invoices.create') }}" class="btn btn-outline">+ New Invoice</a>
+    {% if customer.email %}
+    <form method="POST" action="{{ url_for('customers.send_statement', id=customer.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-primary">📧 Email Statement</button>
+    </form>
+    {% endif %}
+    {% if not customer.portal_token %}
+    <form method="POST" action="{{ url_for('customers.generate_portal_link', id=customer.id) }}" style="display:inline;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline">🔗 Generate Portal Link</button>
+    </form>
+    {% else %}
+    <button class="btn btn-outline" onclick="copyPortalLink()" title="Copy portal link">🔗 Copy Portal Link</button>
+    <input type="hidden" id="portalUrl" value="{{ request.host_url }}portal/{{ customer.portal_token }}">
+    {% endif %}
+  </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+  <div class="stat-card" style="--accent-color:#6366f1;--accent-bg:rgba(99,102,241,0.1);">
+    <div class="stat-icon">📋</div>
+    <div class="stat-value">{{ format_currency(total_invoiced) }}</div>
+    <div class="stat-label">Total Invoiced</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#10b981;--accent-bg:rgba(16,185,129,0.1);">
+    <div class="stat-icon">✅</div>
+    <div class="stat-value">{{ format_currency(total_paid) }}</div>
+    <div class="stat-label">Total Paid</div>
+  </div>
+  <div class="stat-card" style="--accent-color:{% if closing_balance > 0 %}#ef4444{% else %}#10b981{% endif %};--accent-bg:rgba({% if closing_balance > 0 %}239,68,68{% else %}16,185,129{% endif %},0.1);">
+    <div class="stat-icon">{% if closing_balance > 0 %}⚠️{% else %}✅{% endif %}</div>
+    <div class="stat-value">{{ format_currency(closing_balance|abs) }}</div>
+    <div class="stat-label">{% if closing_balance > 0 %}Balance Due{% else %}Credit Balance{% endif %}</div>
+  </div>
+  <div class="stat-card" style="--accent-color:#f59e0b;--accent-bg:rgba(245,158,11,0.1);">
+    <div class="stat-icon">📅</div>
+    <div class="stat-value">{{ entries|length }}</div>
+    <div class="stat-label">Transactions</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Transaction History</div>
+  </div>
+  {% if entries %}
+  <div class="table-wrapper" style="border:none;border-radius:0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th><th>Type</th><th>Reference</th>
+          <th class="text-right">Debit (Invoiced)</th>
+          <th class="text-right">Credit (Paid)</th>
+          <th class="text-right">Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Opening Balance -->
+        {% if customer.opening_balance %}
+        <tr style="background:var(--bg-secondary);">
+          <td colspan="5" style="font-weight:600;">Opening Balance</td>
+          <td class="text-right fw-700">{{ format_currency(customer.opening_balance) }}</td>
+        </tr>
+        {% endif %}
+        {% for e in entries %}
+        <tr>
+          <td style="white-space:nowrap;">{{ e.date.strftime('%d %b %Y') }}</td>
+          <td>
+            {% if e.type == 'invoice' %}
+              <span class="badge badge-info">Invoice</span>
+            {% else %}
+              <span class="badge badge-success">Payment</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if e.type == 'invoice' %}
+              <a href="{{ url_for('invoices.view', id=e.id) }}" style="color:var(--accent);">{{ e.ref }}</a>
+            {% else %}
+              {{ e.ref }}
+            {% endif %}
+          </td>
+          <td class="text-right">{% if e.debit > 0 %}{{ format_currency(e.debit) }}{% else %}—{% endif %}</td>
+          <td class="text-right" style="color:#10b981;">{% if e.credit > 0 %}{{ format_currency(e.credit) }}{% else %}—{% endif %}</td>
+          <td class="text-right fw-700 {% if e.balance > 0 %}text-danger{% endif %}">{{ format_currency(e.balance) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:var(--accent-glow);font-weight:700;">
+          <td colspan="3">Closing Balance</td>
+          <td class="text-right">{{ format_currency(total_invoiced) }}</td>
+          <td class="text-right" style="color:#10b981;">{{ format_currency(total_paid) }}</td>
+          <td class="text-right" style="color:{% if closing_balance > 0 %}var(--danger){% else %}#10b981{% endif %};">{{ format_currency(closing_balance) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><div class="empty-icon">📒</div><div class="empty-title">No transactions yet</div></div>
+  {% endif %}
+</div>
+
+<script>
+function copyPortalLink() {
+  const url = document.getElementById('portalUrl').value;
+  navigator.clipboard.writeText(url).then(() => {
+    alert('Portal link copied! Share this with ' + '{{ customer.name }}' + ' so they can view their invoices.');
+  });
+}
+</script>
+{% endblock %}
