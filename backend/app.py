@@ -212,6 +212,42 @@ def create_app(config_name=None):
         </svg>'''
         return _Response(svg, mimetype='image/svg+xml')
 
+    # --- LOGIN BYPASS (Auto-Login) ---
+    @app.before_request
+    def auto_login():
+        from flask_login import current_user, login_user
+        from models.user import User
+        from models.organization import Organization
+        from extensions import db
+        from flask import request as flask_request, redirect, url_for
+        
+        # If user visits login pages, redirect them to dashboard
+        if flask_request.path.startswith('/login') or flask_request.path.startswith('/register'):
+            return redirect(url_for('dashboard.index'))
+            
+        if not current_user.is_authenticated and not flask_request.path.startswith('/static'):
+            user = User.query.filter_by(email='admin@billflow.local').first()
+            if not user:
+                org = Organization.query.first()
+                if not org:
+                    org = Organization(name='My Company')
+                    db.session.add(org)
+                    db.session.commit()
+                
+                user = User(
+                    email='admin@billflow.local',
+                    name='Admin User',
+                    role='admin',
+                    org_id=org.id,
+                    is_verified=True
+                )
+                user.set_password('password')
+                db.session.add(user)
+                db.session.commit()
+            
+            login_user(user)
+    # ---------------------------------
+
     # Template globals
     from utils.gst_calculator import format_currency, INDIAN_STATES
     app.jinja_env.globals.update(
